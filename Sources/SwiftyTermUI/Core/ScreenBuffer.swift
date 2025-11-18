@@ -1,6 +1,6 @@
 import Foundation
 
-/// Представляє один символ на екрані з його атрибутами
+/// Represents a single character on screen with its attributes
 struct Cell: Equatable {
     var character: Character
     var attributes: TextAttributes
@@ -17,7 +17,7 @@ struct Cell: Equatable {
     }
 }
 
-/// Буфер екрану з підтримкою оптимізованого рендеру
+/// Screen buffer with optimized rendering support
 public final class ScreenBuffer {
     private var current: [[Cell]]
     private var previous: [[Cell]]
@@ -35,7 +35,7 @@ public final class ScreenBuffer {
         self.previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
-    /// Встановлює символ на позицію (y, x) з атрибутами
+    /// Sets a character at position (y, x) with attributes
     func setCell(row: Int, column: Int, character: Character, attributes: TextAttributes = TextAttributes(), foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -52,7 +52,7 @@ public final class ScreenBuffer {
         )
     }
 
-    /// Встановлює рядок тексту на позицію (y, x) з атрибутами
+    /// Sets a text string at position (y, x) with attributes
     func setString(row: Int, column: Int, text: String, attributes: TextAttributes = TextAttributes(), foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -73,7 +73,7 @@ public final class ScreenBuffer {
         }
     }
 
-    /// Очищує область
+    /// Clears an area
     func clearArea(row: Int, column: Int, width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -85,7 +85,7 @@ public final class ScreenBuffer {
         }
     }
 
-    /// Очищує весь буфер
+    /// Clears the entire buffer
     func clear() {
         lock.lock()
         defer { lock.unlock() }
@@ -93,7 +93,7 @@ public final class ScreenBuffer {
         current = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
-    /// Генерує ANSI команди тільки для змінених ділянок
+    /// Generates ANSI commands only for changed regions
     func generateRenderCommands() -> String {
         lock.lock()
         defer { lock.unlock() }
@@ -103,27 +103,27 @@ public final class ScreenBuffer {
         var currentForeground = Color.default
         var currentBackground = Color.default
 
-        // Очистити екран та перейти в (0,0)
+        // Clear screen and move to (0,0)
         commands += "\u{1B}[2J\u{1B}[H"
 
         for row in 0 ..< height {
             for column in 0 ..< width {
                 let cell = current[row][column]
 
-                // Переміщуємось на позицію (y, x) = (row, column)
+                // Move to position (y, x) = (row, column)
                 commands += "\u{1B}[\(row + 1);\(column + 1)H"
 
-                // Оновлюємо атрибути та кольори якщо змінилися
+                // Update attributes and colors if changed
                 if cell.attributes != currentAttributes || cell.foregroundColor != currentForeground || cell.backgroundColor != currentBackground {
-                    commands += "\u{1B}[0m" // Reset всіх атрибутів
+                    commands += "\u{1B}[0m" // Reset all attributes
                     currentAttributes = []
                     currentForeground = .default
                     currentBackground = .default
 
-                    // Встановлюємо нові атрибути
+                    // Set new attributes
                     commands += cell.attributes.toAnsiCodes()
 
-                    // Встановлюємо кольори
+                    // Set colors
                     commands += cell.foregroundColor.ansiCode
                     commands += cell.backgroundColor.backgroundAnsiCode
 
@@ -132,26 +132,26 @@ public final class ScreenBuffer {
                     currentBackground = cell.backgroundColor
                 }
 
-                // Виводимо символ
+                // Output the character
                 commands += String(cell.character)
             }
         }
 
-        // Скидаємо атрибути в кінці
+        // Reset attributes at the end
         commands += "\u{1B}[0m"
 
-        // Оновлюємо previous buffer
+        // Update previous buffer
         previous = current
 
         return commands
     }
 
-    /// Перевіряє, чи позиція в межах буфера
+    /// Checks if a position is within buffer bounds
     private func isValidPosition(row: Int, column: Int) -> Bool {
         row >= 0 && row < height && column >= 0 && column < width
     }
 
-    /// Змінює розмір буфера
+    /// Resizes the buffer
     func resize(width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Черга подій для обробки в правильному порядку
+/// Event queue for processing in correct order
 public final class EventQueue {
     private var queue: [InputEvent] = []
     private let lock = NSLock()
@@ -8,7 +8,7 @@ public final class EventQueue {
     
     public init() {}
     
-    /// Додає подію до черги
+    /// Adds an event to the queue
     public func enqueue(_ event: InputEvent) {
         lock.lock()
         defer { lock.unlock() }
@@ -20,7 +20,7 @@ public final class EventQueue {
         queue.append(event)
     }
     
-    /// Витягує найстарішу подію з черги
+    /// Extracts the oldest event from the queue
     public func dequeue() -> InputEvent? {
         lock.lock()
         defer { lock.unlock() }
@@ -29,7 +29,7 @@ public final class EventQueue {
         return queue.removeFirst()
     }
     
-    /// Подивитись наступну подію без видалення
+    /// Peeks at the next event without removing it
     public func peek() -> InputEvent? {
         lock.lock()
         defer { lock.unlock() }
@@ -37,7 +37,7 @@ public final class EventQueue {
         return queue.first
     }
     
-    /// Очищає всю чергу
+    /// Clears the entire queue
     public func clear() {
         lock.lock()
         defer { lock.unlock() }
@@ -45,7 +45,7 @@ public final class EventQueue {
         queue.removeAll()
     }
     
-    /// Чи черга порожня
+    /// Whether the queue is empty
     public var isEmpty: Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -53,7 +53,7 @@ public final class EventQueue {
         return queue.isEmpty
     }
     
-    /// Кількість подій в черзі
+    /// Number of events in the queue
     public var count: Int {
         lock.lock()
         defer { lock.unlock() }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Пара кольорів для foreground і background
+/// Color pair for foreground and background
 public struct ColorPair: Equatable {
     public let foreground: Color
     public let background: Color

@@ -16,7 +16,7 @@ struct DrawingExample {
         let (cols, rows) = tui.getTerminalSize()
         
         // Заголовок
-        tui.drawCenteredString(row: 1, width: cols, text: "Демонстрація утиліт рисування", attributes: [.bold], foregroundColor: .brightYellow)
+        tui.drawCenteredString(row: 1, width: cols, text: "Drawing Utilities Demonstration", attributes: [.bold], foregroundColor: .brightYellow)
         
         // Малюємо заповнений прямокутник як фон
         tui.fillRect(row: 3, column: 5, width: 30, height: 10, character: "░", foregroundColor: .brightBlack)
@@ -38,15 +38,15 @@ struct DrawingExample {
         tui.drawLine(fromRow: 17, fromColumn: 20, toRow: 25, toColumn: 20, character: "║", foregroundColor: .blue)
         
         // Центрований текст
-        tui.drawCenteredString(row: 17, width: cols, text: "Центрований текст", attributes: [.bold, .underline], foregroundColor: .brightWhite)
+        tui.drawCenteredString(row: 17, width: cols, text: "Centered text", attributes: [.bold, .underline], foregroundColor: .brightWhite)
         
         // Приклад TextUtils
-        let longText = "Це дуже довгий текст який потрібно обрізати до певної ширини інакше він не вміститься"
+        let longText = "This is a very long text that needs to be truncated to a certain width otherwise it won't fit"
         let truncated = TextUtils.truncate(longText, to: 40)
         tui.drawString(row: 19, column: 5, text: truncated, foregroundColor: .yellow)
         
         // Приклад обтікання тексту
-        let wrappedLines = TextUtils.wrap("Текст який обтікає і розбивається на декілька рядків автоматично", width: 30)
+        let wrappedLines = TextUtils.wrap("Text that wraps and breaks into multiple lines automatically", width: 30)
         for (index, line) in wrappedLines.enumerated() {
             tui.drawString(row: 21 + index, column: 5, text: line, foregroundColor: .brightGreen)
         }
@@ -58,7 +58,7 @@ struct DrawingExample {
         }
         
         // Інструкція
-        tui.drawString(row: rows - 2, column: 2, text: "Натисніть ESC для виходу", attributes: [.italic], foregroundColor: .brightBlack)
+        tui.drawString(row: rows - 2, column: 2, text: "Press ESC to exit", attributes: [.italic], foregroundColor: .brightBlack)
         
         try tui.refresh()
         

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Вікно з незалежним буфером та координатами
+/// Window with independent buffer and coordinates
 public final class Window {
     public let id: UUID
     public private(set) var x: Int

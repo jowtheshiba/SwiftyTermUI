@@ -1,13 +1,13 @@
 import Darwin
 import Foundation
 
-/// Типи подій що можуть виникнути
+/// Types of events that can occur
 public enum InputEvent: Equatable {
     case keyPress(Key)
     case terminalResize
 }
 
-/// Типи клавіш
+/// Key types
 public enum Key: Equatable {
     // MARK: - Special keys
 
@@ -44,7 +44,7 @@ public enum Key: Equatable {
     case unknown
 }
 
-/// Обробник введення з терміналу
+/// Terminal input handler
 public final class InputHandler {
     private var buffer = ""
     private let lock = NSLock()
@@ -61,9 +61,9 @@ public final class InputHandler {
         }
     }
 
-    /// Читає наступну подію введення (non-blocking)
+    /// Reads the next input event (non-blocking)
     public func readEvent() -> InputEvent? {
-        // Спочатку перевіряємо чергу подій
+        // First check the event queue
         if let event = eventQueue.dequeue() {
             return event
         }
@@ -71,7 +71,7 @@ public final class InputHandler {
         lock.lock()
         defer { lock.unlock() }
 
-        // Спробуємо прочитати символ з stdin
+        // Try to read a character from stdin
         var byte: UInt8 = 0
         let bytesRead = read(STDIN_FILENO, &byte, 1)
 
@@ -79,17 +79,17 @@ public final class InputHandler {
             return nil
         }
 
-        // Додаємо символ до буфера
+        // Add the character to the buffer
         buffer.append(Character(UnicodeScalar(byte)))
 
-        // Спробуємо розпізнати комбінацію
+        // Try to recognize the combination
         if let key = parseBuffer() {
             let event = InputEvent.keyPress(key)
             eventQueue.enqueue(event)
             return eventQueue.dequeue()
         }
 
-        // Якщо це звичайний символ, відразу повертаємо
+        // If it's a regular character, return immediately
         if buffer.count == 1, byte >= 32 && byte < 127 {
             let char = Character(UnicodeScalar(byte))
             buffer.removeAll()
@@ -99,7 +99,7 @@ public final class InputHandler {
         return nil
     }
     
-    /// Отримує всі події що є в черзі
+    /// Gets all events currently in the queue
     public func pollEvents() -> [InputEvent] {
         var events: [InputEvent] = []
         
@@ -110,12 +110,12 @@ public final class InputHandler {
         return events
     }
     
-    /// Очищає чергу подій
+    /// Clears the event queue
     public func clearEvents() {
         eventQueue.clear()
     }
 
-    /// Розпізнає ANSI escape sequences
+    /// Parses ANSI escape sequences
     private func parseBuffer() -> Key? {
         // Enter
         if buffer == "\r" || buffer == "\n" {
@@ -157,13 +157,13 @@ public final class InputHandler {
             return .alt(char)
         }
         
-        // Простий ESC
+        // Plain ESC
         if buffer == "\u{1B}" {
-            // Чекаємо більше символів для escape sequences
+            // Wait for more characters for escape sequences
             return nil
         }
 
-        // Регулярна клавіша
+        // Regular key
         if buffer.count == 1, let first = buffer.first {
             buffer.removeAll()
             return .character(first)
@@ -172,7 +172,7 @@ public final class InputHandler {
         return nil
     }
 
-    /// Розпізнає escape sequences
+    /// Parses escape sequences
     private func parseEscapeSequence() -> Key? {
         // Arrow keys: ESC [ A/B/C/D
         if buffer == "\u{1B}[A" {
@@ -249,12 +249,12 @@ public final class InputHandler {
         if buffer == "\u{1B}[23~" { buffer.removeAll(); return .f11 }
         if buffer == "\u{1B}[24~" { buffer.removeAll(); return .f12 }
 
-        // Якщо це неповна escape sequence, чекаємо більше символів
+        // If it's an incomplete escape sequence, wait for more characters
         if buffer.count < 6 {
             return nil
         }
 
-        // Невідома комбінація
+        // Unknown combination
         buffer.removeAll()
         return .unknown
     }

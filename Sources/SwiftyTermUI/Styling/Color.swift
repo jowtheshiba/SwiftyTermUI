@@ -1,6 +1,6 @@
 import Foundation
 
-/// Кольор для терміналу (підтримка 8, 16, 256 кольорів та RGB)
+/// Color for terminal (supports 8, 16, 256 colors and RGB)
 public enum Color: Equatable {
     // MARK: - Basic 8 colors
 
@@ -27,7 +27,7 @@ public enum Color: Equatable {
     // MARK: - Extended palette
 
     case indexed(UInt8) // 256-color palette (0-255)
-    case rgb(UInt8, UInt8, UInt8) // RGB (буде конвертовано до найближчого indexed)
+    case rgb(UInt8, UInt8, UInt8) // RGB (will be converted to nearest indexed)
 
     // MARK: - Default
 

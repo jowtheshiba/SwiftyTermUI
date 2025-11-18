@@ -1,6 +1,6 @@
 import Foundation
 
-/// Менеджер панелей для управління стеком вікон з z-order
+/// Panel manager for managing window stack with z-order
 public final class PanelManager {
     private var panels: [Window] = []
     private let lock = NSLock()

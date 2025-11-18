@@ -1,6 +1,6 @@
 import Foundation
 
-/// Атрибути для тексту
+/// Text attributes
 public struct TextAttributes: Equatable, OptionSet, Sendable {
     public let rawValue: UInt8
     

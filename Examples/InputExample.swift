@@ -13,9 +13,9 @@ struct InputExample {
         tui.hideCursor()
         tui.clear()
         
-        tui.drawString(row: 1, column: 2, text: "Демонстрація обробки клавіш", attributes: [.bold], foregroundColor: .brightYellow)
-        tui.drawString(row: 2, column: 2, text: "Натисніть будь-яку клавішу (ESC для виходу)", foregroundColor: .cyan)
-        tui.drawString(row: 4, column: 2, text: "Остання натиснута клавіша:", attributes: [.bold])
+        tui.drawString(row: 1, column: 2, text: "Keyboard Input Demonstration", attributes: [.bold], foregroundColor: .brightYellow)
+        tui.drawString(row: 2, column: 2, text: "Press any key (ESC to exit)", foregroundColor: .cyan)
+        tui.drawString(row: 4, column: 2, text: "Last pressed key:", attributes: [.bold])
         
         try tui.refresh()
         
@@ -31,11 +31,11 @@ struct InputExample {
                     
                     switch key {
                     case .character(let char):
-                        keyDescription = "Символ: '\(char)'"
+                        keyDescription = "Character: '\(char)'"
                     case .enter:
                         keyDescription = "Enter"
                     case .escape:
-                        keyDescription = "Escape (вихід)"
+                        keyDescription = "Escape (exit)"
                         running = false
                     case .tab:
                         keyDescription = "Tab"
@@ -54,13 +54,13 @@ struct InputExample {
                     case .pageDown:
                         keyDescription = "Page Down"
                     case .up:
-                        keyDescription = "Стрілка вгору ↑"
+                        keyDescription = "Arrow up ↑"
                     case .down:
-                        keyDescription = "Стрілка вниз ↓"
+                        keyDescription = "Arrow down ↓"
                     case .left:
-                        keyDescription = "Стрілка вліво ←"
+                        keyDescription = "Arrow left ←"
                     case .right:
-                        keyDescription = "Стрілка вправо →"
+                        keyDescription = "Arrow right →"
                     case .f1:
                         keyDescription = "F1"
                     case .f2:
@@ -90,7 +90,7 @@ struct InputExample {
                     case .alt(let char):
                         keyDescription = "Alt+\(char)"
                     case .unknown:
-                        keyDescription = "Невідома клавіша"
+                        keyDescription = "Unknown key"
                     }
                     
                     if keyDescription != lastKey {
@@ -110,7 +110,7 @@ struct InputExample {
                     
                 case .terminalResize:
                     tui.clear()
-                    tui.drawString(row: 1, column: 2, text: "Термінал змінено!", attributes: [.bold], foregroundColor: .brightRed)
+                    tui.drawString(row: 1, column: 2, text: "Terminal resized!", attributes: [.bold], foregroundColor: .brightRed)
                     try tui.refresh()
                 }
             }

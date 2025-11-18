@@ -1,9 +1,9 @@
 import Foundation
 
-/// Утиліти для рисування
+/// Utilities for drawing
 public struct DrawingUtils {
     
-    /// Малює лінію від (fromRow, fromColumn) до (toRow, toColumn)
+    /// Draws a line from (fromRow, fromColumn) to (toRow, toColumn)
     public static func drawLine(
         buffer: ScreenBuffer,
         fromRow: Int,
@@ -48,7 +48,7 @@ public struct DrawingUtils {
         }
     }
     
-    /// Малює прямокутник (тільки контур)
+    /// Draws a rectangle (outline only)
     public static func drawRect(
         buffer: ScreenBuffer,
         row: Int,
@@ -60,20 +60,20 @@ public struct DrawingUtils {
         foregroundColor: Color = .default,
         backgroundColor: Color = .default
     ) {
-        // Верхня та нижня лінії
+        // Top and bottom lines
         for x in column..<(column + width) {
             buffer.setCell(row: row, column: x, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
             buffer.setCell(row: row + height - 1, column: x, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
         }
         
-        // Ліва та права лінії
+        // Left and right lines
         for y in row..<(row + height) {
             buffer.setCell(row: y, column: column, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
             buffer.setCell(row: y, column: column + width - 1, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
         }
     }
     
-    /// Малює заповнений прямокутник
+    /// Draws a filled rectangle
     public static func fillRect(
         buffer: ScreenBuffer,
         row: Int,
@@ -99,7 +99,7 @@ public struct DrawingUtils {
         }
     }
     
-    /// Центрує текст в межах заданої ширини
+    /// Centers text within a given width
     public static func centerText(_ text: String, width: Int) -> (text: String, startColumn: Int) {
         let textLength = text.count
         
@@ -111,7 +111,7 @@ public struct DrawingUtils {
         return (text, padding)
     }
     
-    /// Вирівнює текст вправо
+    /// Aligns text to the right
     public static func alignRight(_ text: String, width: Int) -> (text: String, startColumn: Int) {
         let textLength = text.count
         

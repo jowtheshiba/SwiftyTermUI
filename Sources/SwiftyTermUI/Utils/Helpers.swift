@@ -1,26 +1,26 @@
 import Foundation
 
-/// Допоміжні функції
+/// Helper functions
 public struct Helpers {
     
-    /// Перевіряє чи координати знаходяться в межах області
+    /// Checks if coordinates are within bounds
     public static func isInBounds(row: Int, column: Int, maxRow: Int, maxColumn: Int) -> Bool {
         row >= 0 && row < maxRow && column >= 0 && column < maxColumn
     }
     
-    /// Обмежує значення в межах діапазону
+    /// Clamps value within a range
     public static func clamp<T: Comparable>(_ value: T, min minValue: T, max maxValue: T) -> T {
         min(max(value, minValue), maxValue)
     }
     
-    /// Обчислює відстань між двома точками
+    /// Calculates distance between two points
     public static func distance(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int) -> Double {
         let dx = Double(toColumn - fromColumn)
         let dy = Double(toRow - fromRow)
         return sqrt(dx * dx + dy * dy)
     }
     
-    /// Перетворює HSV (Hue, Saturation, Value) в RGB
+    /// Converts HSV (Hue, Saturation, Value) to RGB
     public static func hsvToRgb(h: Double, s: Double, v: Double) -> (r: UInt8, g: UInt8, b: UInt8) {
         let c = v * s
         let x = c * (1 - abs((h / 60).truncatingRemainder(dividingBy: 2) - 1))
@@ -50,7 +50,7 @@ public struct Helpers {
         )
     }
     
-    /// Перетворює RGB в HSV
+    /// Converts RGB to HSV
     public static func rgbToHsv(r: UInt8, g: UInt8, b: UInt8) -> (h: Double, s: Double, v: Double) {
         let rf = Double(r) / 255.0
         let gf = Double(g) / 255.0
@@ -81,12 +81,12 @@ public struct Helpers {
         return (h, s, v)
     }
     
-    /// Створює Color з RGB значень
+    /// Creates Color from RGB values
     public static func colorFromRgb(r: UInt8, g: UInt8, b: UInt8) -> Color {
         .rgb(r, g, b)
     }
     
-    /// Створює Color з HEX рядка (наприклад "#FF5500")
+    /// Creates Color from HEX string (e.g. "#FF5500")
     public static func colorFromHex(_ hex: String) -> Color? {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
@@ -103,7 +103,7 @@ public struct Helpers {
         return .rgb(r, g, b)
     }
     
-    /// Обчислює область перетину двох прямокутників
+    /// Calculates intersection area of two rectangles
     public static func intersection(
         rect1: (x: Int, y: Int, width: Int, height: Int),
         rect2: (x: Int, y: Int, width: Int, height: Int)
@@ -121,7 +121,7 @@ public struct Helpers {
         return (x1, y1, width, height)
     }
     
-    /// Перевіряє чи два прямокутники перетинаються
+    /// Checks if two rectangles overlap
     public static func rectsOverlap(
         rect1: (x: Int, y: Int, width: Int, height: Int),
         rect2: (x: Int, y: Int, width: Int, height: Int)

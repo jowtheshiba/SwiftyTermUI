@@ -1,6 +1,6 @@
 import Foundation
 
-/// Основний фасад для роботи з TUI
+/// Main facade for working with TUI
 @MainActor
 public final class SwiftyTermUI {
     public static let shared = SwiftyTermUI()
@@ -22,7 +22,7 @@ public final class SwiftyTermUI {
         inputHandler = InputHandler()
     }
 
-    /// Ініціалізує TUI сеанс
+    /// Initializes TUI session
     public func initialize() throws {
         lock.lock()
         defer { lock.unlock() }
@@ -32,7 +32,7 @@ public final class SwiftyTermUI {
         try terminal.initialize()
         isInitialized = true
 
-        // Підписуємося на зміну розміру терміналу
+        // Subscribe to terminal resize events
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleTerminalResize),
@@ -41,7 +41,7 @@ public final class SwiftyTermUI {
         )
     }
 
-    /// Завершує TUI сеанс та очищує ресурси
+    /// Terminates TUI session and cleans up resources
     public func shutdown() {
         lock.lock()
         defer { lock.unlock() }
@@ -55,7 +55,7 @@ public final class SwiftyTermUI {
 
     // MARK: - Drawing
 
-    /// Виводить символ на позицію (y, x)
+    /// Outputs character at position (y, x)
     public func addChar(row: Int, column: Int, character: Character, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -74,7 +74,7 @@ public final class SwiftyTermUI {
         addChar(row: row, column: column, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Виводить текст на позицію (y, x)
+    /// Outputs text at position (y, x)
     public func addString(row: Int, column: Int, text: String, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -93,7 +93,7 @@ public final class SwiftyTermUI {
         addString(row: row, column: column, text: text, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Малює box (прямокутник) з заданого символу
+    /// Draws a box (rectangle) from the given character
     public func addBox(row: Int, column: Int, width: Int, height: Int, character: Character = " ", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -114,7 +114,7 @@ public final class SwiftyTermUI {
     
     // MARK: - Drawing Utilities
     
-    /// Малює лінію
+    /// Draws a line
     public func drawLine(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int, character: Character = "─", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -122,7 +122,7 @@ public final class SwiftyTermUI {
         DrawingUtils.drawLine(buffer: screenBuffer, fromRow: fromRow, fromColumn: fromColumn, toRow: toRow, toColumn: toColumn, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Малює прямокутник (тільки контур)
+    /// Draws a rectangle (outline only)
     public func drawRect(row: Int, column: Int, width: Int, height: Int, character: Character = "█", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -130,7 +130,7 @@ public final class SwiftyTermUI {
         DrawingUtils.drawRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Малює заповнений прямокутник
+    /// Draws a filled rectangle
     public func fillRect(row: Int, column: Int, width: Int, height: Int, character: Character = " ", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -138,13 +138,13 @@ public final class SwiftyTermUI {
         DrawingUtils.fillRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Виводить центрований текст
+    /// Outputs centered text
     public func drawCenteredString(row: Int, width: Int, text: String, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         let (centeredText, startCol) = DrawingUtils.centerText(text, width: width)
         drawString(row: row, column: startCol, text: centeredText, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Очищує область екрану
+    /// Clears screen area
     public func clearArea(row: Int, column: Int, width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -152,7 +152,7 @@ public final class SwiftyTermUI {
         screenBuffer.clearArea(row: row, column: column, width: width, height: height)
     }
 
-    /// Очищує весь екран
+    /// Clears entire screen
     public func clear() {
         lock.lock()
         defer { lock.unlock() }
@@ -162,7 +162,7 @@ public final class SwiftyTermUI {
 
     // MARK: - Rendering
 
-    /// Оновлює екран - відправляє ANSI команди на вивід
+    /// Refreshes screen - sends ANSI commands for output
     public func refresh() throws {
         lock.lock()
         defer { lock.unlock() }
@@ -175,41 +175,41 @@ public final class SwiftyTermUI {
 
     // MARK: - Input
 
-    /// Читає наступну подію введення (non-blocking)
+    /// Reads next input event (non-blocking)
     public func readEvent() -> InputEvent? {
         inputHandler.readEvent()
     }
     
-    /// Отримує всі події що є в черзі
+    /// Gets all events in the queue
     public func pollEvents() -> [InputEvent] {
         inputHandler.pollEvents()
     }
     
-    /// Очищає чергу подій
+    /// Clears event queue
     public func clearEvents() {
         inputHandler.clearEvents()
     }
 
     // MARK: - Terminal Info
 
-    /// Отримує поточні розміри терміналу
+    /// Gets current terminal size
     public func getTerminalSize() -> (columns: Int, rows: Int) {
         terminal.getTerminalSize()
     }
 
-    /// Отримує ширину терміналу в колонках
+    /// Gets terminal width in columns
     public var columns: Int {
         getTerminalSize().columns
     }
 
-    /// Отримує висоту терміналу в рядках
+    /// Gets terminal height in rows
     public var rows: Int {
         getTerminalSize().rows
     }
 
     // MARK: - Cursor
 
-    /// Встановлює позицію курсора
+    /// Sets cursor position
     public func setCursorPosition(row: Int, column: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -222,7 +222,7 @@ public final class SwiftyTermUI {
         setCursorPosition(row: row, column: column)
     }
 
-    /// Отримує поточну позицію курсора
+    /// Gets current cursor position
     public func getCursorPosition() -> (row: Int, column: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -230,7 +230,7 @@ public final class SwiftyTermUI {
         return (cursorY, cursorX)
     }
     
-    /// Показує курсор
+    /// Shows cursor
     public func showCursor() {
         lock.lock()
         defer { lock.unlock() }
@@ -239,7 +239,7 @@ public final class SwiftyTermUI {
         terminal.writeToTerminal("\u{1B}[?25h")
     }
     
-    /// Ховає курсор
+    /// Hides cursor
     public func hideCursor() {
         lock.lock()
         defer { lock.unlock() }
@@ -248,7 +248,7 @@ public final class SwiftyTermUI {
         terminal.writeToTerminal("\u{1B}[?25l")
     }
     
-    /// Чи курсор видимий
+    /// Whether cursor is visible
     public var isCursorVisible: Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -258,12 +258,12 @@ public final class SwiftyTermUI {
 
     // MARK: - Window/Panel Management
     
-    /// Створює нове вікно
+    /// Creates a new window
     public func createWindow(x: Int, y: Int, width: Int, height: Int, hasBorder: Bool = false, borderStyle: Window.BorderStyle = .single) -> Window {
         Window(x: x, y: y, width: width, height: height, hasBorder: hasBorder, borderStyle: borderStyle)
     }
     
-    /// Додає вікно до панелей
+    /// Adds window to panels
     public func addPanel(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -271,7 +271,7 @@ public final class SwiftyTermUI {
         panelManager.addPanel(window)
     }
     
-    /// Видаляє вікно з панелей
+    /// Removes window from panels
     public func removePanel(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -279,7 +279,7 @@ public final class SwiftyTermUI {
         panelManager.removePanel(window)
     }
     
-    /// Переносить вікно на передній план
+    /// Brings window to front
     public func bringToFront(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -287,7 +287,7 @@ public final class SwiftyTermUI {
         panelManager.bringToFront(window)
     }
     
-    /// Відправляє вікно на задній план
+    /// Sends window to back
     public func sendToBack(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -295,7 +295,7 @@ public final class SwiftyTermUI {
         panelManager.sendToBack(window)
     }
     
-    /// Ховає вікно
+    /// Hides window
     public func hideWindow(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -303,7 +303,7 @@ public final class SwiftyTermUI {
         panelManager.hide(window)
     }
     
-    /// Показує вікно
+    /// Shows window
     public func showWindow(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -311,12 +311,12 @@ public final class SwiftyTermUI {
         panelManager.show(window)
     }
     
-    /// Отримує всі вікна
+    /// Gets all windows
     public var allWindows: [Window] {
         panelManager.allPanels
     }
     
-    /// Отримує видимі вікна
+    /// Gets visible windows
     public var visibleWindows: [Window] {
         panelManager.visiblePanels
     }
@@ -331,7 +331,7 @@ public final class SwiftyTermUI {
         let (newWidth, newHeight) = terminal.getTerminalSize()
         screenBuffer.resize(width: newWidth, height: newHeight)
 
-        // Спробуємо оновити екран
+        // Try to refresh the screen
         panelManager.renderToBuffer(screenBuffer)
         let commands = screenBuffer.generateRenderCommands()
         terminal.writeToTerminal(commands)

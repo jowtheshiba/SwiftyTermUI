@@ -29,6 +29,10 @@ let package = Package(
             name: "DrawingExample",
             targets: ["DrawingExample"]
         ),
+        .executable(
+            name: "ComponentsExample",
+            targets: ["ComponentsExample"]
+        ),
     ],
     targets: [
         .target(
@@ -57,6 +61,12 @@ let package = Package(
             dependencies: ["SwiftyTermUI"],
             path: "Examples",
             sources: ["DrawingExample.swift"]
+        ),
+        .executableTarget(
+            name: "ComponentsExample",
+            dependencies: ["SwiftyTermUI"],
+            path: "Examples",
+            sources: ["ComponentsExample.swift"]
         ),
     ]
 )

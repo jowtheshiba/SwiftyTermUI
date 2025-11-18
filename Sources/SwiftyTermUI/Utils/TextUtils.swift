@@ -1,9 +1,9 @@
 import Foundation
 
-/// Утиліти для форматування тексту
+/// Utilities for text formatting
 public struct TextUtils {
     
-    /// Обрізає текст до заданої ширини
+    /// Truncates text to a specified width
     public static func truncate(_ text: String, to width: Int, suffix: String = "...") -> String {
         if text.count <= width {
             return text
@@ -13,7 +13,7 @@ public struct TextUtils {
         return String(text.prefix(maxLength)) + suffix
     }
     
-    /// Обтікає текст на декілька рядків згідно з максимальною шириною
+    /// Wraps text into multiple lines according to maximum width
     public static func wrap(_ text: String, width: Int) -> [String] {
         guard width > 0 else { return [] }
         
@@ -25,7 +25,7 @@ public struct TextUtils {
         for word in words {
             let wordStr = String(word)
             
-            // Якщо слово довше за ширину, розбиваємо його
+            // If word is longer than width, split it
             if wordStr.count > width {
                 if !currentLine.isEmpty {
                     lines.append(currentLine)
@@ -60,19 +60,19 @@ public struct TextUtils {
         return lines.isEmpty ? [""] : lines
     }
     
-    /// Додає padding зліва
+    /// Adds padding on the left
     public static func padLeft(_ text: String, to width: Int, with char: Character = " ") -> String {
         let padding = max(0, width - text.count)
         return String(repeating: char, count: padding) + text
     }
     
-    /// Додає padding справа
+    /// Adds padding on the right
     public static func padRight(_ text: String, to width: Int, with char: Character = " ") -> String {
         let padding = max(0, width - text.count)
         return text + String(repeating: char, count: padding)
     }
     
-    /// Додає padding з обох боків (центрування)
+    /// Adds padding on both sides (centering)
     public static func padCenter(_ text: String, to width: Int, with char: Character = " ") -> String {
         let totalPadding = max(0, width - text.count)
         let leftPadding = totalPadding / 2
@@ -81,12 +81,12 @@ public struct TextUtils {
         return String(repeating: char, count: leftPadding) + text + String(repeating: char, count: rightPadding)
     }
     
-    /// Розбиває текст на рядки з урахуванням символів нового рядка
+    /// Splits text into lines taking into account newline characters
     public static func splitLines(_ text: String) -> [String] {
         text.components(separatedBy: .newlines)
     }
     
-    /// Видаляє ANSI escape codes з тексту
+    /// Removes ANSI escape codes from text
     public static func stripAnsiCodes(_ text: String) -> String {
         let pattern = "\\x1B\\[[0-9;]*[a-zA-Z]"
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
@@ -97,7 +97,7 @@ public struct TextUtils {
         return regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }
     
-    /// Обчислює візуальну довжину тексту (без ANSI кодів)
+    /// Calculates visual length of text (without ANSI codes)
     public static func visualLength(_ text: String) -> Int {
         stripAnsiCodes(text).count
     }

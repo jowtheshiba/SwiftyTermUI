@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-/// Управління станом та налаштуванням терміналу
+/// Terminal state and configuration management
 @MainActor
 public final class TerminalManager {
     public static let shared = TerminalManager()
@@ -12,24 +12,24 @@ public final class TerminalManager {
 
     private init() {}
 
-    /// Ініціалізує термінал для TUI роботи
-    /// - Переводить в raw mode (без буферизації вводу)
-    /// - Відключає echo
-    /// - Устанавлює non-blocking читання
+    /// Initializes the terminal for TUI operation
+    /// - Switches to raw mode (no input buffering)
+    /// - Disables echo
+    /// - Sets up non-blocking reading
     public func initialize() throws {
         lock.lock()
         defer { lock.unlock() }
 
         guard !isRawMode else { return }
 
-        // Зберігаємо оригінальні параметри
+        // Save original parameters
         guard tcgetattr(STDIN_FILENO, &originalTermios) == 0 else {
             throw TerminalError.failedToGetTerminalAttributes
         }
 
         var newTermios = originalTermios
 
-        // Відключаємо канонічний режим та echo
+        // Disable canonical mode and echo
         newTermios.c_lflag &= ~(UInt(ICANON) | UInt(ECHO))
         newTermios.c_cc.0 = 0 // VMIN
         newTermios.c_cc.1 = 0 // VTIME
@@ -40,7 +40,7 @@ public final class TerminalManager {
 
         isRawMode = true
 
-        // Налаштування обробки resize сигналу
+        // Set up resize signal handling
         signal(SIGWINCH, { _ in
             NotificationCenter.default.post(
                 name: NSNotification.Name("TerminalDidResize"),
@@ -48,40 +48,40 @@ public final class TerminalManager {
             )
         })
 
-        // Приховуємо курсор
+        // Hide cursor
         writeToTerminal("\u{1B}[?25l")
     }
 
-    /// Відновлює оригінальні параметри терміналу
+    /// Restores original terminal parameters
     public func cleanup() {
         lock.lock()
         defer { lock.unlock() }
 
         guard isRawMode else { return }
 
-        // Показуємо курсор
+        // Show cursor
         writeToTerminal("\u{1B}[?25h")
 
-        // Очищуємо екран та повертаємо курсор в домашню позицію
+        // Clear screen and return cursor to home position
         writeToTerminal("\u{1B}[2J\u{1B}[H")
 
-        // Відновлюємо оригінальні termios
+        // Restore original termios
         _ = tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios)
         isRawMode = false
     }
 
-    /// Отримує поточні розміри терміналу
+    /// Gets current terminal dimensions
     public func getTerminalSize() -> (columns: Int, rows: Int) {
         var size = winsize()
 
         guard ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &size) == 0 else {
-            return (80, 24) // Значення за замовчуванням
+            return (80, 24) // Default values
         }
 
         return (Int(size.ws_col), Int(size.ws_row))
     }
 
-    /// Записує ANSI команду прямо в термінал
+    /// Writes ANSI command directly to terminal
     func writeToTerminal(_ command: String) {
         if let data = command.data(using: .utf8) {
             FileHandle.standardOutput.write(data)
@@ -99,11 +99,11 @@ public enum TerminalError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .failedToGetTerminalAttributes:
-            return "Не вдалось отримати параметри терміналу"
+            return "Failed to get terminal parameters"
         case .failedToSetTerminalAttributes:
-            return "Не вдалось встановити параметри терміналу"
+            return "Failed to set terminal parameters"
         case .failedToReadInput:
-            return "Не вдалось прочитати введення"
+            return "Failed to read input"
         }
     }
 }

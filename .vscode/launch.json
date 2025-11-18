@@ -79,6 +79,26 @@
             "target": "DrawingExample",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release DrawingExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Debug ComponentsExample",
+            "target": "ComponentsExample",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ComponentsExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Release ComponentsExample",
+            "target": "ComponentsExample",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ComponentsExample"
         }
     ]
 }
