@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Debug HelloTermUI",
+            "target": "HelloTermUI",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug HelloTermUI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Release HelloTermUI",
+            "target": "HelloTermUI",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release HelloTermUI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Debug WindowExample",
+            "target": "WindowExample",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug WindowExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Release WindowExample",
+            "target": "WindowExample",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release WindowExample"
+        }
+    ]
+}
