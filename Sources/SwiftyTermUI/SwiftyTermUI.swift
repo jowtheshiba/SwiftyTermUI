@@ -111,6 +111,38 @@ public final class SwiftyTermUI {
             }
         }
     }
+    
+    // MARK: - Drawing Utilities
+    
+    /// Малює лінію
+    public func drawLine(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int, character: Character = "─", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        DrawingUtils.drawLine(buffer: screenBuffer, fromRow: fromRow, fromColumn: fromColumn, toRow: toRow, toColumn: toColumn, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
+    }
+    
+    /// Малює прямокутник (тільки контур)
+    public func drawRect(row: Int, column: Int, width: Int, height: Int, character: Character = "█", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        DrawingUtils.drawRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
+    }
+    
+    /// Малює заповнений прямокутник
+    public func fillRect(row: Int, column: Int, width: Int, height: Int, character: Character = " ", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        DrawingUtils.fillRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
+    }
+    
+    /// Виводить центрований текст
+    public func drawCenteredString(row: Int, width: Int, text: String, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
+        let (centeredText, startCol) = DrawingUtils.centerText(text, width: width)
+        drawString(row: row, column: startCol, text: centeredText, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
+    }
 
     /// Очищує область екрану
     public func clearArea(row: Int, column: Int, width: Int, height: Int) {
@@ -146,6 +178,16 @@ public final class SwiftyTermUI {
     /// Читає наступну подію введення (non-blocking)
     public func readEvent() -> InputEvent? {
         inputHandler.readEvent()
+    }
+    
+    /// Отримує всі події що є в черзі
+    public func pollEvents() -> [InputEvent] {
+        inputHandler.pollEvents()
+    }
+    
+    /// Очищає чергу подій
+    public func clearEvents() {
+        inputHandler.clearEvents()
     }
 
     // MARK: - Terminal Info

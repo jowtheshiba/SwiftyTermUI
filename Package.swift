@@ -21,6 +21,14 @@ let package = Package(
             name: "WindowExample",
             targets: ["WindowExample"]
         ),
+        .executable(
+            name: "InputExample",
+            targets: ["InputExample"]
+        ),
+        .executable(
+            name: "DrawingExample",
+            targets: ["DrawingExample"]
+        ),
     ],
     targets: [
         .target(
@@ -37,6 +45,18 @@ let package = Package(
             dependencies: ["SwiftyTermUI"],
             path: "Examples",
             sources: ["WindowExample.swift"]
+        ),
+        .executableTarget(
+            name: "InputExample",
+            dependencies: ["SwiftyTermUI"],
+            path: "Examples",
+            sources: ["InputExample.swift"]
+        ),
+        .executableTarget(
+            name: "DrawingExample",
+            dependencies: ["SwiftyTermUI"],
+            path: "Examples",
+            sources: ["DrawingExample.swift"]
         ),
     ]
 )

@@ -139,38 +139,57 @@ SwiftyTermUI - це нативна реалізація TUI (Terminal User Inter
 - API для управління вікнами: createWindow, addPanel, removePanel, bringToFront, sendToBack, hideWindow, showWindow
 - Підтримка заголовків вікон та фокусу (виділення рамки)
 
-### Етап 4: Введення та поточне (Input Handling)
+### Етап 4: Введення та поточне (Input Handling) ✅ COMPLETED
 **Мета**: захоплення та обробка користувацького вводу
 
-- [ ] **4.1** - Обробка введення (InputHandler)
+- [x] **4.1** - Обробка введення (InputHandler)
   - Читання сирих символів з stdin без буферизації
   - Розпізнавання ANSI sequence для спеціальних клавіш
-  - Обробка стрілок, F1-F12, Home, End, Delete тощо
-  - Non-blocking read (опціональне)
+  - Обробка стрілок, F1-F12, Home, End, Delete, Insert тощо
+  - Non-blocking read через poll
+  - Ctrl+клавіша та Alt+клавіша комбінації
 
-- [ ] **4.2** - Обробка подій
-  - EventType перерахунок (KeyPress, Resize, Mouse optsional)
-  - Системи для обробки Resize на SIGWINCH
-  - Queue подій для обробки в правильному порядку
+- [x] **4.2** - Обробка подій
+  - EventType: KeyPress (з усіма спеціальними клавішами), Resize
+  - Система обробки Resize через SIGWINCH та NotificationCenter
+  - EventQueue для обробки в правильному порядку
 
-### Етап 5: Утиліти та допоміжні функції (Utilities)
+**Реалізовано:**
+- `Key` enum з підтримкою: спеціальних клавіш (Enter, Escape, Tab, Backspace, Delete, Home, End, PageUp/Down, Insert, стрілки), функціональних клавіш (F1-F12), Ctrl+клавіша, Alt+клавіша
+- `InputHandler` - розпізнавання ANSI escape sequences з non-blocking read
+- `EventQueue` - черга подій з максимальним розміром для уникнення переповнення
+- API: readEvent(), pollEvents(), clearEvents()
+- Інтеграція з NotificationCenter для обробки resize подій
+
+### Етап 5: Утиліти та допоміжні функції (Utilities) ✅ COMPLETED
 **Мета**: загальні операції та форматування
 
-- [ ] **5.1** - Утиліти рисування
-  - `drawLine(fromY, fromX, toY, toX, char)`
-  - `drawRect(y, x, width, height)`
-  - `fillRect(y, x, width, height, char, attrs)`
-  - Центрування тексту
+- [x] **5.1** - Утиліти рисування
+  - `drawLine(fromY, fromX, toY, toX, char)` - алгоритм Брезенхема
+  - `drawRect(y, x, width, height)` - контур прямокутника
+  - `fillRect(y, x, width, height, char, attrs)` - заповнений прямокутник
+  - Центрування тексту (centerText, drawCenteredString)
+  - Вирівнювання тексту (alignRight)
 
-- [ ] **5.2** - Форматування тексту
-  - Обтікання на довжину лінії
-  - Обрізання до ширини
-  - Підтримка ANSI кольорів у рядках
+- [x] **5.2** - Форматування тексту
+  - Обтікання на довжину лінії (wrap)
+  - Обрізання до ширини (truncate)
+  - Padding функції (padLeft, padRight, padCenter)
+  - Розбиття на рядки (splitLines)
+  - Підтримка ANSI кольорів у рядках (stripAnsiCodes, visualLength)
 
-- [ ] **5.3** - Допоміжні функції
-  - Отримання потрібного місця для контенту
-  - Валідація координат
-  - Конвертація кольорів та атрибутів
+- [x] **5.3** - Допоміжні функції
+  - Валідація координат (isInBounds)
+  - Обмеження значень (clamp)
+  - Обчислення відстані між точками (distance)
+  - Конвертація кольорів (HSV↔RGB, HEX→Color)
+  - Геометричні операції (intersection, rectsOverlap)
+
+**Реалізовано:**
+- `DrawingUtils` - утиліти для малювання ліній, прямокутників, центрування
+- `TextUtils` - форматування, обтікання, обрізання, padding, робота з ANSI кодами
+- `Helpers` - валідація, конвертація кольорів (RGB/HSV/HEX), геометричні операції
+- API інтеграція: drawLine, drawRect, fillRect, drawCenteredString
 
 ### Етап 6: Вищорівневі компоненти (High-level Components)
 **Мета**: готові до використання UI елементи

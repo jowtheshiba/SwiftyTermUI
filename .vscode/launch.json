@@ -39,6 +39,46 @@
             "target": "WindowExample",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release WindowExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Debug InputExample",
+            "target": "InputExample",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug InputExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Release InputExample",
+            "target": "InputExample",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release InputExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Debug DrawingExample",
+            "target": "DrawingExample",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug DrawingExample"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SwiftyTermUI}",
+            "name": "Release DrawingExample",
+            "target": "DrawingExample",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release DrawingExample"
         }
     ]
 }
