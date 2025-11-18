@@ -9,6 +9,8 @@ public final class TerminalManager {
     private var originalTermios: termios = termios()
     private var isRawMode = false
     private let lock = NSLock()
+    private var writeBuffer = ""
+    private let bufferFlushThreshold = 8192 // Flush when buffer reaches 8KB
 
     private init() {}
 
@@ -48,8 +50,10 @@ public final class TerminalManager {
             )
         })
 
-        // Hide cursor
-        writeToTerminal("\u{1B}[?25l")
+        // Hide cursor (no need to buffer during init)
+        if let data = "\u{1B}[?25l".data(using: .utf8) {
+            FileHandle.standardOutput.write(data)
+        }
     }
 
     /// Restores original terminal parameters
@@ -60,10 +64,13 @@ public final class TerminalManager {
         guard isRawMode else { return }
 
         // Show cursor
-        writeToTerminal("\u{1B}[?25h")
+        writeBuffer.append("\u{1B}[?25h")
 
         // Clear screen and return cursor to home position
-        writeToTerminal("\u{1B}[2J\u{1B}[H")
+        writeBuffer.append("\u{1B}[2J\u{1B}[H")
+
+        // Flush all buffered commands before cleanup
+        flushBufferUnlocked()
 
         // Restore original termios
         _ = tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios)
@@ -86,6 +93,39 @@ public final class TerminalManager {
         if let data = command.data(using: .utf8) {
             FileHandle.standardOutput.write(data)
         }
+    }
+
+    /// Writes raw data directly to terminal (optimized for batched commands)
+    func writeRawToTerminal(_ data: Data) {
+        FileHandle.standardOutput.write(data)
+    }
+
+    /// Buffers a command and flushes when threshold is reached
+    func bufferCommand(_ command: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        writeBuffer.append(command)
+        if writeBuffer.utf8.count >= bufferFlushThreshold {
+            flushBufferUnlocked()
+        }
+    }
+
+    /// Flushes any buffered commands immediately
+    public func flushBuffer() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        flushBufferUnlocked()
+    }
+
+    private func flushBufferUnlocked() {
+        guard !writeBuffer.isEmpty else { return }
+
+        if let data = writeBuffer.data(using: .utf8) {
+            FileHandle.standardOutput.write(data)
+        }
+        writeBuffer.removeAll(keepingCapacity: true)
     }
 }
 

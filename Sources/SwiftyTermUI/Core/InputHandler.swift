@@ -192,13 +192,13 @@ public final class InputHandler {
             return .left
         }
 
-        // Home: ESC [ H або ESC [ 1 ~ або ESC O H
+        // Home: ESC [ H or ESC [ 1 ~ or ESC O H
         if buffer == "\u{1B}[H" || buffer == "\u{1B}[1~" || buffer == "\u{1B}OH" {
             buffer.removeAll()
             return .home
         }
 
-        // End: ESC [ F або ESC [ 4 ~ або ESC O F
+        // End: ESC [ F or ESC [ 4 ~ or ESC O F
         if buffer == "\u{1B}[F" || buffer == "\u{1B}[4~" || buffer == "\u{1B}OF" {
             buffer.removeAll()
             return .end
@@ -235,7 +235,7 @@ public final class InputHandler {
         if buffer == "\u{1B}OR" { buffer.removeAll(); return .f3 }
         if buffer == "\u{1B}OS" { buffer.removeAll(); return .f4 }
         
-        // F1-F12: ESC [ 1 1 ~ до ESC [ 2 4 ~
+        // F1-F12: ESC [ 1 1 ~ to ESC [ 2 4 ~
         if buffer == "\u{1B}[11~" { buffer.removeAll(); return .f1 }
         if buffer == "\u{1B}[12~" { buffer.removeAll(); return .f2 }
         if buffer == "\u{1B}[13~" { buffer.removeAll(); return .f3 }

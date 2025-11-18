@@ -13,14 +13,14 @@ struct ComponentsExample {
         tui.hideCursor()
         tui.clear()
         
-        // Заголовок
+        // Title
         let title = Label(x: 0, y: 1, text: "SwiftyTermUI Components Demo")
         title.attributes = [.bold, .underline]
         title.foregroundColor = .brightYellow
         title.width = tui.columns
         title.alignment = .center
         
-        // Меню
+        // Menu
         let menu = Menu(x: 5, y: 4, width: 30, items: ["Option 1", "Option 2", "Option 3", "Exit"])
         menu.title = "Main Menu"
         menu.hasBorder = true
@@ -30,11 +30,11 @@ struct ComponentsExample {
             selectedOption = "Selected: \(item)"
         }
         
-        // Label з результатом
+        // Label to display selected item
         let resultLabel = Label(x: 40, y: 5, text: "")
         resultLabel.foregroundColor = .green
         
-        // Кнопки
+        // Buttons
         let button1 = Button(x: 40, y: 8, text: "Press me")
         button1.isFocused = false
         button1.onPress = {
@@ -47,7 +47,7 @@ struct ComponentsExample {
         progressBar.style = .blocks
         var progress = 0.0
         
-        // TextBox з логами
+        // TextBox for logging events
         let textBox = TextBox(x: 5, y: 13, width: 65, height: 8)
         textBox.title = "Event Log"
         textBox.appendLine("Application started")
@@ -59,7 +59,7 @@ struct ComponentsExample {
         while running {
             tui.clear()
             
-            // Рендеринг
+            // Rendering
             title.render(to: tui)
             menu.render(to: tui)
             
@@ -73,12 +73,12 @@ struct ComponentsExample {
             
             textBox.render(to: tui)
             
-            // Інструкції
+            // Instructions
             tui.drawString(row: tui.rows - 2, column: 2, text: "Tab - switch | Arrows - navigate | Enter - select | ESC - exit", foregroundColor: .brightBlack)
             
             try tui.refresh()
             
-            // Обробка вводу
+            // Handle input
             if let event = tui.readEvent() {
                 if case .keyPress(let key) = event {
                     switch key {
@@ -107,7 +107,7 @@ struct ComponentsExample {
                     }
                 }
                 
-                // Анімація прогресбару
+                // Animate progress bar
                 progress += 0.01
                 if progress > 1.0 {
                     progress = 0.0

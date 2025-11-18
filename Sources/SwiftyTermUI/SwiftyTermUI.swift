@@ -9,6 +9,7 @@ public final class SwiftyTermUI {
     private var screenBuffer: ScreenBuffer
     private let inputHandler: InputHandler
     private let panelManager = PanelManager()
+    private let renderOptimizer = RenderOptimizer()
     private let lock = NSLock()
 
     private var isInitialized = false
@@ -162,14 +163,15 @@ public final class SwiftyTermUI {
 
     // MARK: - Rendering
 
-    /// Refreshes screen - sends ANSI commands for output
+    /// Refreshes screen - sends ANSI commands for output with optimization
     public func refresh() throws {
         lock.lock()
         defer { lock.unlock() }
 
         panelManager.renderToBuffer(screenBuffer)
         
-        let commands = screenBuffer.generateRenderCommands()
+        // Use optimized renderer with caching and batching
+        let commands = renderOptimizer.generateOptimizedRenderCommands(buffer: screenBuffer)
         terminal.writeToTerminal(commands)
     }
 
@@ -321,6 +323,30 @@ public final class SwiftyTermUI {
         panelManager.visiblePanels
     }
 
+    /// Clears the render cache (call this after changing theme colors or attributes)
+    public func clearRenderCache() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        renderOptimizer.clearCache()
+    }
+
+    /// Gets render optimizer statistics for monitoring performance
+    public func getRenderStatistics() -> OptimizerStatistics {
+        lock.lock()
+        defer { lock.unlock() }
+
+        return renderOptimizer.getStatistics()
+    }
+
+    /// Flushes any buffered terminal commands immediately
+    public func flushOutput() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        terminal.flushBuffer()
+    }
+
     // MARK: - Private
 
     @objc
@@ -331,9 +357,9 @@ public final class SwiftyTermUI {
         let (newWidth, newHeight) = terminal.getTerminalSize()
         screenBuffer.resize(width: newWidth, height: newHeight)
 
-        // Try to refresh the screen
+        // Try to refresh the screen with optimization
         panelManager.renderToBuffer(screenBuffer)
-        let commands = screenBuffer.generateRenderCommands()
+        let commands = renderOptimizer.generateOptimizedRenderCommands(buffer: screenBuffer)
         terminal.writeToTerminal(commands)
     }
 }

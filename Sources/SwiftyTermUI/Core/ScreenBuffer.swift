@@ -161,4 +161,26 @@ public final class ScreenBuffer {
         current = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
         previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
+
+    /// Gets a cell at position (row, column) for optimization purposes
+    func getCell(row: Int, column: Int) -> Cell {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard isValidPosition(row: row, column: column) else {
+            return Cell.empty()
+        }
+        return current[row][column]
+    }
+
+    /// Gets the previous cell state (before last render)
+    func getPreviousCell(row: Int, column: Int) -> Cell {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard isValidPosition(row: row, column: column) else {
+            return Cell.empty()
+        }
+        return previous[row][column]
+    }
 }

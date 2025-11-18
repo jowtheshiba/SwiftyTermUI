@@ -1,7 +1,7 @@
 import Foundation
 
 /// Text attributes
-public struct TextAttributes: Equatable, OptionSet, Sendable {
+public struct TextAttributes: Equatable, Hashable, OptionSet, Sendable {
     public let rawValue: UInt8
     
     public init(rawValue: UInt8) {

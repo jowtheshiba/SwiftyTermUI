@@ -1,7 +1,7 @@
 import Foundation
 
 /// Color for terminal (supports 8, 16, 256 colors and RGB)
-public enum Color: Equatable {
+public enum Color: Equatable, Hashable {
     // MARK: - Basic 8 colors
 
     case black
