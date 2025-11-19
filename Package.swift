@@ -13,6 +13,10 @@ let package = Package(
             name: "SwiftyTermUI",
             targets: ["SwiftyTermUI"]
         ),
+        .library(
+            name: "RetroVision",
+            targets: ["RetroVision"]
+        ),
         .executable(
             name: "HelloTermUI",
             targets: ["HelloTermUI"]
@@ -32,6 +36,10 @@ let package = Package(
         .executable(
             name: "ComponentsExample",
             targets: ["ComponentsExample"]
+        ),
+        .executable(
+            name: "RetroDemo",
+            targets: ["RetroDemo"]
         ),
     ],
     targets: [
@@ -67,6 +75,16 @@ let package = Package(
             dependencies: ["SwiftyTermUI"],
             path: "Examples",
             sources: ["ComponentsExample.swift"]
+        ),
+        .target(
+            name: "RetroVision",
+            dependencies: ["SwiftyTermUI"]
+        ),
+        .executableTarget(
+            name: "RetroDemo",
+            dependencies: ["RetroVision", "SwiftyTermUI"],
+            path: "Examples",
+            sources: ["RetroDemo.swift"]
         ),
     ]
 )
