@@ -75,12 +75,10 @@ public final class InputHandler {
         var byte: UInt8 = 0
         let bytesRead = read(STDIN_FILENO, &byte, 1)
 
-        guard bytesRead > 0 else {
-            return nil
+        if bytesRead > 0 {
+            // Add the character to the buffer
+            buffer.append(Character(UnicodeScalar(byte)))
         }
-
-        // Add the character to the buffer
-        buffer.append(Character(UnicodeScalar(byte)))
 
         // Try to recognize the combination
         if let key = parseBuffer() {
@@ -89,9 +87,24 @@ public final class InputHandler {
             return eventQueue.dequeue()
         }
 
+        // Special handling for standalone ESC
+        // If we have an ESC in the buffer and no more data is coming immediately,
+        // treat it as a standalone ESC key.
+        if buffer == "\u{1B}" {
+            var fds = [pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)]
+            // Wait up to 10ms for more data
+            let result = poll(&fds, 1, 10)
+            
+            if result == 0 {
+                // Timeout, assume standalone ESC
+                buffer.removeAll()
+                return .keyPress(.escape)
+            }
+        }
+
         // If it's a regular character, return immediately
-        if buffer.count == 1, byte >= 32 && byte < 127 {
-            let char = Character(UnicodeScalar(byte))
+        if buffer.count == 1, let first = buffer.first, let ascii = first.asciiValue, ascii >= 32 && ascii < 127 {
+            let char = Character(UnicodeScalar(ascii))
             buffer.removeAll()
             return .keyPress(.character(char))
         }

@@ -98,63 +98,8 @@ final class RenderOptimizer {
         self.batchSize = batchSize
     }
 
-    /// Generates optimized render commands with caching and batching
+    /// Generates optimized render commands using diffing
     func generateOptimizedRenderCommands(buffer: ScreenBuffer) -> String {
-        lock.lock()
-        defer { lock.unlock() }
-
-        var batch = CommandBatch(maxSize: batchSize)
-
-        // Clear screen and move to (0,0)
-        batch.append("\u{1B}[2J\u{1B}[H")
-
-        var currentAttributes = TextAttributes()
-        var currentForeground = Color.default
-        var currentBackground = Color.default
-
-        let height = buffer.rows
-        let width = buffer.columns
-
-        for row in 0 ..< height {
-            for column in 0 ..< width {
-                let cell = buffer.getCell(row: row, column: column)
-
-                // Move to position only if different from expected position
-                batch.append("\u{1B}[\(row + 1);\(column + 1)H")
-
-                // Update attributes and colors if changed
-                if cell.attributes != currentAttributes || cell.foregroundColor != currentForeground || cell.backgroundColor != currentBackground {
-                    // Reset
-                    batch.append("\u{1B}[0m")
-                    currentAttributes = []
-                    currentForeground = .default
-                    currentBackground = .default
-
-                    // Set new attributes
-                    batch.append(cache.getAttributeCode(cell.attributes))
-
-                    // Set colors
-                    batch.append(cache.getForegroundColorCode(cell.foregroundColor))
-                    batch.append(cache.getBackgroundColorCode(cell.backgroundColor))
-
-                    currentAttributes = cell.attributes
-                    currentForeground = cell.foregroundColor
-                    currentBackground = cell.backgroundColor
-                }
-
-                // Output the character
-                batch.append(String(cell.character))
-            }
-        }
-
-        // Reset attributes at the end
-        batch.append("\u{1B}[0m")
-
-        return batch.build()
-    }
-
-    /// Generates incremental render commands by comparing with previous state (experimental)
-    func generateIncrementalRenderCommands(buffer: ScreenBuffer) -> String {
         lock.lock()
         defer { lock.unlock() }
 
@@ -162,6 +107,12 @@ final class RenderOptimizer {
         
         let height = buffer.rows
         let width = buffer.columns
+
+        // If dimensions changed, force full redraw
+        if lastRenderedState.rows != height || lastRenderedState.columns != width {
+            batch.append("\u{1B}[2J\u{1B}[H")
+            lastRenderedState = ScreenRenderState(width: width, height: height)
+        }
 
         var currentAttributes = TextAttributes()
         var currentForeground = Color.default
@@ -175,13 +126,43 @@ final class RenderOptimizer {
                 let previousCell = lastRenderedState.getCell(row: row, column: column)
 
                 // Skip unchanged cells
-                if cell == previousCell && row == currentRow && column == currentColumn + 1 {
-                    currentColumn += 1
+                if cell == previousCell {
+                    // If we are skipping, we lose track of "cursor" position if we were just writing
+                    // But we only need to move cursor if we write again.
+                    // So we just continue.
                     continue
                 }
 
                 // Move to position if needed
-                if row != currentRow || column != currentColumn + 1 {
+                // We track where the cursor would be if we just wrote a char.
+                // If we skipped, the cursor is NOT at (row, column).
+                // So we must move it.
+                // Optimization: if we are at (row, column), no need to move.
+                // But since we skip, we don't know where the terminal cursor is?
+                // Actually, we can track it.
+                
+                // Simple approach: Always move if not sequential?
+                // Let's use the logic:
+                // If we just wrote at (row, col-1), cursor is at (row, col).
+                // If we skipped (row, col-1), cursor is unknown (or at previous write end).
+                
+                // To be safe and simple for now:
+                // If (row, column) is not (currentRow, currentColumn), move.
+                // But wait, `currentColumn` is incremented after write.
+                
+                // Let's refine the cursor tracking.
+                // We only update `currentRow`/`currentColumn` when we WRITE.
+                // If we skip, `currentRow`/`currentColumn` become invalid/stale relative to screen,
+                // but they represent where the cursor IS.
+                
+                // Wait, if we skip, the cursor DOES NOT move on screen.
+                // So `currentRow`/`currentColumn` should track the *screen cursor*.
+                
+                // If we skip, we don't update `currentRow`/`currentColumn`.
+                // When we need to write at `(row, column)`, we check if `currentRow == row` and `currentColumn == column`.
+                // If not, we move.
+                
+                if row != currentRow || column != currentColumn {
                     batch.append("\u{1B}[\(row + 1);\(column + 1)H")
                     currentRow = row
                     currentColumn = column
@@ -206,8 +187,7 @@ final class RenderOptimizer {
                 batch.append(String(cell.character))
                 currentColumn += 1
             }
-            currentRow += 1
-            currentColumn = 0
+            // End of row, we don't necessarily wrap or move cursor unless needed next time
         }
 
         batch.append("\u{1B}[0m")
@@ -293,7 +273,9 @@ struct ScreenRenderState {
         let height = buffer.rows
         let width = buffer.columns
 
-        cells = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
+        if cells.count != height || (cells.first?.count ?? 0) != width {
+            cells = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
+        }
 
         for row in 0 ..< height {
             for column in 0 ..< width {
@@ -307,6 +289,15 @@ struct ScreenRenderState {
             return Cell.empty()
         }
         return cells[row][column]
+    }
+    
+    var rows: Int { cells.count }
+    var columns: Int { cells.first?.count ?? 0 }
+    
+    init(width: Int = 0, height: Int = 0) {
+        if width > 0 && height > 0 {
+            cells = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
+        }
     }
 }
 
