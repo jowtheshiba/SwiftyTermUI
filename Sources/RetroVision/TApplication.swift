@@ -21,6 +21,14 @@ open class TApplication {
         return TDesktop(frame: Rect(x: 0, y: 0, width: cols, height: rows))
     }()
     
+    public var menuBar: TMenuBar? {
+        didSet {
+            // Adjust desktop frame if needed?
+            // For now, just let them overlap or manual adjustment
+            redraw()
+        }
+    }
+    
     public var desktop: TDesktop {
         _desktop
     }
@@ -30,6 +38,9 @@ open class TApplication {
         do {
             try SwiftyTermUI.shared.initialize()
             defer { SwiftyTermUI.shared.shutdown() }
+            
+            // Enable mouse reporting if supported
+            // SwiftyTermUI.shared.enableMouse() // Assuming this exists or is default
             
             isRunning = true
             
@@ -64,11 +75,22 @@ open class TApplication {
             
             // Convert to TEvent
             let tEvent = TEvent.key(key)
+            
+            // Pass event to components
+            // 1. Menu Bar (if it handles it)
+            if let menuBar = menuBar {
+                menuBar.handleEvent(tEvent)
+            }
+            
+            // 2. Desktop (Windows)
             desktop.handleEvent(tEvent)
             
         case .terminalResize:
             let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()
             desktop.frame = Rect(x: 0, y: 0, width: cols, height: rows)
+            if let menuBar = menuBar {
+                menuBar.frame = Rect(x: 0, y: 0, width: cols, height: 1)
+            }
             redraw()
         }
     }
@@ -76,6 +98,7 @@ open class TApplication {
     @MainActor
     public func redraw() {
         desktop.draw()
+        menuBar?.draw()
         try? SwiftyTermUI.shared.refresh()
     }
 }
