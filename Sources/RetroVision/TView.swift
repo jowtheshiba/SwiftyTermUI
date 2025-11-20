@@ -54,20 +54,23 @@ open class TView {
         }
     }
     
-    open func handleMouseEvent(_ event: TEvent.MouseEvent) {
-        guard isVisible else { return }
+    @discardableResult
+    open func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
+        guard isVisible else { return false }
         
         for view in subviews.reversed() where view.isVisible {
             let localPoint = view.globalToLocal(event.position)
             if view.bounds.contains(localPoint) {
                 var localizedEvent = event
                 localizedEvent.position = localPoint
-                view.handleMouseEvent(localizedEvent)
-                return
+                if view.handleMouseEvent(localizedEvent) {
+                    return true // Event was handled by subview
+                }
             }
         }
         
         mouseEvent(event)
+        return false // Event not handled
     }
     
     open func mouseEvent(_ event: TEvent.MouseEvent) {

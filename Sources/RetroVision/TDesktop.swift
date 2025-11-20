@@ -65,7 +65,7 @@ public class TDesktop: TView {
         )
     }
     
-    public override func handleMouseEvent(_ event: TEvent.MouseEvent) {
+    public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         DebugLogger.log("TDesktop: handleMouseEvent action=\(event.action) button=\(event.button) position=(\(event.position.x), \(event.position.y))")
         cursorPosition = clampToDesktop(event.position)
         
@@ -86,8 +86,10 @@ public class TDesktop: TView {
         }
         
         if !consumed {
-            super.handleMouseEvent(event)
+            return super.handleMouseEvent(event)
         }
+        
+        return consumed
     }
     
     // MARK: - Private

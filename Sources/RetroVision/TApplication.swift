@@ -139,15 +139,26 @@ open class TApplication {
             let mouseEvent = convertMouseEvent(mouse)
             DebugLogger.log("TApplication converted mouse to TEvent.MouseEvent position=(\(mouseEvent.position.x), \(mouseEvent.position.y)) action=\(mouseEvent.action) button=\(mouseEvent.button)")
             
-            // Adjust mouse coordinates to account for menu bar if present
-            // Menu bar occupies the first row (y=0), so we need to adjust coordinates for desktop
-            var adjustedMouseEvent = mouseEvent
-            if let menuBar = menuBar, menuBar.isVisible {
-                let menuBarHeight = menuBar.frame.height
-                DebugLogger.log("TApplication: menuBar exists, height=\(menuBarHeight), mouse y=\(mouseEvent.position.y)")
-                // If mouse is over menu bar area, don't adjust (menu bar handles it)
-                // Otherwise, adjust coordinates for desktop
-                if mouseEvent.position.y >= menuBarHeight {
+            // Check if mouse is in menu bar area (y == 0) or potentially in dropdown
+            // Menu bar is always at y=0, dropdown appears below it
+            let isInMenuBarArea = mouseEvent.position.y == 0
+            let mightBeInDropdown = mouseEvent.position.y > 0 && mouseEvent.position.y < 20 // Dropdowns are typically < 20 rows
+            
+            // First, always try menu bar if mouse is in menu bar area or might be in dropdown
+            var menuBarHandled = false
+            if let menuBar = menuBar, menuBar.isVisible && (isInMenuBarArea || mightBeInDropdown) {
+                DebugLogger.log("TApplication: Sending mouse event to menuBar with position=(\(mouseEvent.position.x), \(mouseEvent.position.y))")
+                // Menu bar's handleMouseEvent returns true if it handled the event
+                menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
+                DebugLogger.log("TApplication: MenuBar handled event: \(menuBarHandled)")
+            }
+            
+            // Only send to desktop if menu bar didn't handle it and mouse is not in menu bar row
+            if !menuBarHandled && !isInMenuBarArea {
+                // Adjust mouse coordinates to account for menu bar if present
+                var adjustedMouseEvent = mouseEvent
+                if let menuBar = menuBar, menuBar.isVisible {
+                    let menuBarHeight = menuBar.frame.height
                     let adjustedPosition = Point(x: mouseEvent.position.x, y: mouseEvent.position.y - menuBarHeight)
                     adjustedMouseEvent = TEvent.MouseEvent(
                         position: adjustedPosition,
@@ -157,19 +168,12 @@ open class TApplication {
                         modifiers: mouseEvent.modifiers
                     )
                     DebugLogger.log("TApplication adjusted mouse y coordinate: \(mouseEvent.position.y) -> \(adjustedPosition.y) (menuBarHeight=\(menuBarHeight))")
-                } else {
-                    DebugLogger.log("TApplication: Mouse is in menu bar area (y=\(mouseEvent.position.y) < menuBarHeight=\(menuBarHeight))")
                 }
-            } else {
-                DebugLogger.log("TApplication: No menu bar or menu bar not visible")
+                DebugLogger.log("TApplication: Sending mouse event to desktop with position=(\(adjustedMouseEvent.position.x), \(adjustedMouseEvent.position.y))")
+                desktop.handleEvent(.mouse(adjustedMouseEvent)) // Use adjusted coordinates for desktop
+            } else if isInMenuBarArea {
+                DebugLogger.log("TApplication: Mouse in menu bar area, not sending to desktop")
             }
-            
-            DebugLogger.log("TApplication: Sending mouse event to menuBar with position=(\(mouseEvent.position.x), \(mouseEvent.position.y))")
-            if let menuBar = menuBar {
-                menuBar.handleEvent(.mouse(mouseEvent)) // Use original coordinates for menu bar
-            }
-            DebugLogger.log("TApplication: Sending mouse event to desktop with position=(\(adjustedMouseEvent.position.x), \(adjustedMouseEvent.position.y))")
-            desktop.handleEvent(.mouse(adjustedMouseEvent)) // Use adjusted coordinates for desktop
             
         case .terminalResize:
             let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()

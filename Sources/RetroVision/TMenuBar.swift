@@ -234,9 +234,15 @@ public class TMenuBar: TView {
         case .key(let key):
             DebugLogger.log("TMenuBar: Key event: \(key)")
             handleKeyEvent(key)
+            // Don't call super for key events - menu bar consumes them
+            return
         case .mouse(let mouseEvent):
             DebugLogger.log("TMenuBar: Mouse event received in handleEvent: position=(\(mouseEvent.position.x), \(mouseEvent.position.y)) action=\(mouseEvent.action) button=\(mouseEvent.button)")
-            handleMouseEvent(mouseEvent)
+            let handled = handleMouseEvent(mouseEvent)
+            // If menu bar handled the event, don't pass it to super
+            if handled {
+                return
+            }
         default:
             DebugLogger.log("TMenuBar: Unknown event type")
             break
@@ -245,24 +251,52 @@ public class TMenuBar: TView {
         super.handleEvent(event)
     }
     
-    public override func handleMouseEvent(_ event: TEvent.MouseEvent) {
-        guard isVisible else { return }
+    @discardableResult
+    public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
+        guard isVisible else { return false }
         
         // Menu bar is at (0, 0), so global coordinates should match local coordinates
         // But use globalToLocal to be safe in case menu bar is moved in the future
         let localPoint = globalToLocal(event.position)
         DebugLogger.log("TMenuBar: handleMouseEvent action=\(event.action) button=\(event.button) global=(\(event.position.x), \(event.position.y)) local=(\(localPoint.x), \(localPoint.y)) bounds=\(bounds) frame=\(frame)")
         
-        // Check if click is within menu bar bounds (y should be 0 for menu bar)
-        // Also check if y is exactly 0 (menu bar is at row 0)
-        let isInMenuBar = localPoint.y == 0 && localPoint.x >= 0 && localPoint.x < frame.width
-        guard isInMenuBar || bounds.contains(localPoint) else {
-            DebugLogger.log("TMenuBar: Click outside bounds (y=\(localPoint.y), x=\(localPoint.x))")
+        // Check if click is within menu bar bounds
+        // Menu bar is at global position (0, 0), so local coordinates should match global for y=0
+        // But we also need to handle dropdown clicks which are below the menu bar
+        let isInMenuBarRow = event.position.y == 0 && event.position.x >= 0 && event.position.x < frame.width
+        let isInBounds = bounds.contains(localPoint)
+        
+        // Also check if click might be in dropdown (if menu is open)
+        var mightBeInDropdown = false
+        if isMenuOpen && event.position.y > 0 {
+            let globalPos = localToGlobal(Point(x: 0, y: 0))
+            var dropdownX = globalPos.x + 1
+            for i in 0..<selectedMenuIndex {
+                dropdownX += menus[i].title.count + 2
+            }
+            let dropdownY = globalPos.y + 1
+            let menu = menus[selectedMenuIndex]
+            
+            var maxWidth = menu.title.count
+            for item in menu.items {
+                let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4
+                maxWidth = max(maxWidth, itemWidth)
+            }
+            maxWidth = max(maxWidth, 20)
+            let dropdownHeight = menu.items.count + 2
+            
+            mightBeInDropdown = event.position.x >= dropdownX && event.position.x < dropdownX + maxWidth &&
+                                event.position.y >= dropdownY && event.position.y < dropdownY + dropdownHeight
+        }
+        
+        guard isInMenuBarRow || isInBounds || mightBeInDropdown else {
+            DebugLogger.log("TMenuBar: Click outside bounds (y=\(localPoint.y), x=\(localPoint.x), global y=\(event.position.y))")
             // If menu is open and click is outside, close it
             if isMenuOpen {
                 isMenuOpen = false
+                return true // Event handled (menu closed)
             }
-            return
+            return false // Event not handled by menu bar
         }
         
         DebugLogger.log("TMenuBar: Click within bounds, processing...")
@@ -301,7 +335,7 @@ public class TMenuBar: TView {
                             isMenuOpen = false
                         }
                     }
-                    return
+                    return true // Event handled
                 }
             }
             
@@ -337,16 +371,19 @@ public class TMenuBar: TView {
                         }
                         DebugLogger.log("TMenuBar: Menu opened, selectedItemIndex=\(selectedItemIndex)")
                     }
-                    return
+                    return true // Event handled
                 }
                 
                 currentX = menuEndX
             }
             DebugLogger.log("TMenuBar: No menu item matched click at x=\(localPoint.x)")
+            return true // Click was in menu bar area, even if not on a menu item
             
         default:
             break
         }
+        
+        return false // Event not handled
     }
     
     private func handleKeyEvent(_ key: Key) {
