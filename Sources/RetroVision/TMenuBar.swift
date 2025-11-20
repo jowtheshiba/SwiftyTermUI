@@ -101,12 +101,16 @@ public class TMenuBar: TView {
         let tui = SwiftyTermUI.shared
         let menu = menus[selectedMenuIndex]
         
+        DebugLogger.log("TMenuBar: Drawing dropdown for menu '\(menu.title)' at globalPos=(\(globalPos.x), \(globalPos.y))")
+        
         // Calculate dropdown position
         var dropdownX = globalPos.x + 1
         for i in 0..<selectedMenuIndex {
             dropdownX += menus[i].title.count + 2
         }
         let dropdownY = globalPos.y + 1
+        
+        DebugLogger.log("TMenuBar: Dropdown position: x=\(dropdownX), y=\(dropdownY)")
         
         // Calculate dropdown width (longest item + padding)
         var maxWidth = menu.title.count
@@ -225,14 +229,124 @@ public class TMenuBar: TView {
     }
     
     public override func handleEvent(_ event: TEvent) {
+        DebugLogger.log("TMenuBar: handleEvent called with event type: \(event)")
         switch event {
         case .key(let key):
+            DebugLogger.log("TMenuBar: Key event: \(key)")
             handleKeyEvent(key)
+        case .mouse(let mouseEvent):
+            DebugLogger.log("TMenuBar: Mouse event received in handleEvent: position=(\(mouseEvent.position.x), \(mouseEvent.position.y)) action=\(mouseEvent.action) button=\(mouseEvent.button)")
+            handleMouseEvent(mouseEvent)
         default:
+            DebugLogger.log("TMenuBar: Unknown event type")
             break
         }
         
         super.handleEvent(event)
+    }
+    
+    public override func handleMouseEvent(_ event: TEvent.MouseEvent) {
+        guard isVisible else { return }
+        
+        // Menu bar is at (0, 0), so global coordinates should match local coordinates
+        // But use globalToLocal to be safe in case menu bar is moved in the future
+        let localPoint = globalToLocal(event.position)
+        DebugLogger.log("TMenuBar: handleMouseEvent action=\(event.action) button=\(event.button) global=(\(event.position.x), \(event.position.y)) local=(\(localPoint.x), \(localPoint.y)) bounds=\(bounds) frame=\(frame)")
+        
+        // Check if click is within menu bar bounds (y should be 0 for menu bar)
+        // Also check if y is exactly 0 (menu bar is at row 0)
+        let isInMenuBar = localPoint.y == 0 && localPoint.x >= 0 && localPoint.x < frame.width
+        guard isInMenuBar || bounds.contains(localPoint) else {
+            DebugLogger.log("TMenuBar: Click outside bounds (y=\(localPoint.y), x=\(localPoint.x))")
+            // If menu is open and click is outside, close it
+            if isMenuOpen {
+                isMenuOpen = false
+            }
+            return
+        }
+        
+        DebugLogger.log("TMenuBar: Click within bounds, processing...")
+        
+        // Handle clicks on menu items
+        switch event.action {
+        case .down where event.button == .left:
+            // First check if click is in dropdown (if menu is open)
+            if isMenuOpen {
+                let globalPos = localToGlobal(Point(x: 0, y: 0))
+                var dropdownX = globalPos.x + 1
+                for i in 0..<selectedMenuIndex {
+                    dropdownX += menus[i].title.count + 2
+                }
+                let dropdownY = globalPos.y + 1
+                let menu = menus[selectedMenuIndex]
+                
+                var maxWidth = menu.title.count
+                for item in menu.items {
+                    let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4
+                    maxWidth = max(maxWidth, itemWidth)
+                }
+                maxWidth = max(maxWidth, 20)
+                let dropdownHeight = menu.items.count + 2
+                
+                // Check if click is in dropdown area (using global coordinates)
+                if event.position.x >= dropdownX && event.position.x < dropdownX + maxWidth &&
+                   event.position.y >= dropdownY && event.position.y < dropdownY + dropdownHeight {
+                    
+                    // Calculate which item was clicked
+                    let itemIndex = event.position.y - dropdownY - 1
+                    if itemIndex >= 0 && itemIndex < menu.items.count {
+                        let item = menu.items[itemIndex]
+                        if !item.isSeparator {
+                            item.action?()
+                            isMenuOpen = false
+                        }
+                    }
+                    return
+                }
+            }
+            
+            // If not in dropdown, check if click is on menu bar items
+            DebugLogger.log("TMenuBar: Checking menu items, localPoint.x=\(localPoint.x)")
+            var currentX = 1 // Start after left edge
+            for (index, menu) in menus.enumerated() {
+                let text = " \(menu.title) "
+                let menuStartX = currentX
+                let menuEndX = currentX + text.count
+                
+                DebugLogger.log("TMenuBar: Menu[\(index)] '\(menu.title)' range: [\(menuStartX), \(menuEndX)), text='\(text)'")
+                
+                if localPoint.x >= menuStartX && localPoint.x < menuEndX {
+                    // Menu clicked
+                    DebugLogger.log("TMenuBar: Menu '\(menu.title)' clicked (index=\(index))")
+                    if isMenuOpen && selectedMenuIndex == index {
+                        // Same menu clicked again - close it
+                        DebugLogger.log("TMenuBar: Closing menu")
+                        isMenuOpen = false
+                    } else {
+                        // Open this menu
+                        DebugLogger.log("TMenuBar: Opening menu '\(menu.title)'")
+                        isMenuOpen = true
+                        selectedMenuIndex = index
+                        selectedItemIndex = 0
+                        // Skip separators
+                        while selectedItemIndex < menu.items.count && menu.items[selectedItemIndex].isSeparator {
+                            selectedItemIndex += 1
+                        }
+                        if selectedItemIndex >= menu.items.count {
+                            selectedItemIndex = 0
+                        }
+                        DebugLogger.log("TMenuBar: Menu opened, selectedItemIndex=\(selectedItemIndex)")
+                    }
+                    return
+                }
+                
+                currentX = menuEndX
+            }
+            DebugLogger.log("TMenuBar: No menu item matched click at x=\(localPoint.x)")
+            
+        default:
+            break
+        }
     }
     
     private func handleKeyEvent(_ key: Key) {

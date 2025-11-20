@@ -8,6 +8,7 @@ public class TDesktop: TView {
     private var cursorVisible: Bool = true
     private weak var draggingWindow: TWindow?
     private var dragOffset: Point = Point(x: 0, y: 0)
+    public var menuBarHeight: Int = 0 // Height of menu bar to avoid cursor going under it
     
     public init(frame: Rect, backgroundChar: Character = "░", backgroundAttr: TextAttributes = TextAttributes()) {
         self.backgroundChar = backgroundChar
@@ -39,7 +40,29 @@ public class TDesktop: TView {
         // Draw subviews (windows)
         super.draw()
         
-        drawCursor()
+        // Note: cursor is drawn in TApplication.redraw() after menu bar
+        // to ensure it appears on top of everything
+    }
+    
+    @MainActor
+    public func drawCursor() {
+        guard cursorVisible else { return }
+        guard frame.width > 0 && frame.height > 0 else { return }
+        
+        let withinX = cursorPosition.x >= frame.x && cursorPosition.x < frame.x + frame.width
+        let withinY = cursorPosition.y >= frame.y && cursorPosition.y < frame.y + frame.height
+        guard withinX && withinY else { return }
+        
+        let tui = SwiftyTermUI.shared
+        DebugLogger.log("TDesktop: Drawing cursor at row=\(cursorPosition.y) column=\(cursorPosition.x)")
+        tui.drawChar(
+            row: cursorPosition.y,
+            column: cursorPosition.x,
+            character: "╳",
+            attributes: [.bold],
+            foregroundColor: .black,
+            backgroundColor: .brightWhite
+        )
     }
     
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) {
@@ -160,6 +183,8 @@ public class TDesktop: TView {
         
         let minX = frame.x
         let maxX = frame.x + frame.width - 1
+        // Allow cursor to be anywhere in the screen, including menu bar area
+        // Menu bar is drawn on top, so cursor can be there
         let minY = frame.y
         let maxY = frame.y + frame.height - 1
         
@@ -168,24 +193,4 @@ public class TDesktop: TView {
         return Point(x: clampedX, y: clampedY)
     }
     
-    @MainActor
-    private func drawCursor() {
-        guard cursorVisible else { return }
-        guard frame.width > 0 && frame.height > 0 else { return }
-        
-        let withinX = cursorPosition.x >= frame.x && cursorPosition.x < frame.x + frame.width
-        let withinY = cursorPosition.y >= frame.y && cursorPosition.y < frame.y + frame.height
-        guard withinX && withinY else { return }
-        
-        let tui = SwiftyTermUI.shared
-        DebugLogger.log("TDesktop: Drawing cursor at row=\(cursorPosition.y) column=\(cursorPosition.x)")
-        tui.drawChar(
-            row: cursorPosition.y,
-            column: cursorPosition.x,
-            character: "╳",
-            attributes: [.bold],
-            foregroundColor: .black,
-            backgroundColor: .brightWhite
-        )
-    }
 }

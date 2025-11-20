@@ -23,8 +23,12 @@ open class TApplication {
     
     public var menuBar: TMenuBar? {
         didSet {
-            // Adjust desktop frame if needed?
-            // For now, just let them overlap or manual adjustment
+            // Update desktop menu bar height so cursor doesn't go under it
+            if let menuBar = menuBar {
+                desktop.menuBarHeight = menuBar.frame.height
+            } else {
+                desktop.menuBarHeight = 0
+            }
             redraw()
         }
     }
@@ -61,10 +65,12 @@ open class TApplication {
                     if let event = SwiftyTermUI.shared.readEvent() {
                         hasEvents = true
                         let isMouseMove = isMouseMoveEvent(event)
+                        let isMouseClick = isMouseClickEvent(event)
                         handleLowLevelEvent(event)
                         
                         // Redraw immediately after mouse move events for smooth cursor tracking
-                        if isMouseMove {
+                        // Also redraw immediately after mouse clicks (e.g., menu bar, buttons)
+                        if isMouseMove || isMouseClick {
                             redraw()
                         } else {
                             // Mark that we need redraw for non-mouse events
@@ -99,6 +105,14 @@ open class TApplication {
         return false
     }
     
+    /// Checks if event is a mouse click that might need immediate redraw (e.g., menu bar clicks)
+    private func isMouseClickEvent(_ event: InputEvent) -> Bool {
+        if case .mouse(let mouse) = event {
+            return mouse.action == .down || mouse.action == .up
+        }
+        return false
+    }
+    
     @MainActor
     private func handleLowLevelEvent(_ event: InputEvent) {
         switch event {
@@ -121,14 +135,16 @@ open class TApplication {
             desktop.handleEvent(tEvent)
             
         case .mouse(let mouse):
-            DebugLogger.log("TApplication received mouse input button=\(mouse.button) action=\(mouse.action) col=\(mouse.column) row=\(mouse.row) modifiers=\(mouse.modifiers.rawValue)")
+            DebugLogger.log("TApplication received mouse input button=\(mouse.button) action=\(mouse.action) col=\(mouse.column) row=\(mouse.row)")
             let mouseEvent = convertMouseEvent(mouse)
+            DebugLogger.log("TApplication converted mouse to TEvent.MouseEvent position=(\(mouseEvent.position.x), \(mouseEvent.position.y)) action=\(mouseEvent.action) button=\(mouseEvent.button)")
             
             // Adjust mouse coordinates to account for menu bar if present
             // Menu bar occupies the first row (y=0), so we need to adjust coordinates for desktop
             var adjustedMouseEvent = mouseEvent
             if let menuBar = menuBar, menuBar.isVisible {
                 let menuBarHeight = menuBar.frame.height
+                DebugLogger.log("TApplication: menuBar exists, height=\(menuBarHeight), mouse y=\(mouseEvent.position.y)")
                 // If mouse is over menu bar area, don't adjust (menu bar handles it)
                 // Otherwise, adjust coordinates for desktop
                 if mouseEvent.position.y >= menuBarHeight {
@@ -141,13 +157,18 @@ open class TApplication {
                         modifiers: mouseEvent.modifiers
                     )
                     DebugLogger.log("TApplication adjusted mouse y coordinate: \(mouseEvent.position.y) -> \(adjustedPosition.y) (menuBarHeight=\(menuBarHeight))")
+                } else {
+                    DebugLogger.log("TApplication: Mouse is in menu bar area (y=\(mouseEvent.position.y) < menuBarHeight=\(menuBarHeight))")
                 }
+            } else {
+                DebugLogger.log("TApplication: No menu bar or menu bar not visible")
             }
             
-            DebugLogger.log("TApplication converted to Point(x=\(adjustedMouseEvent.position.x), y=\(adjustedMouseEvent.position.y))")
+            DebugLogger.log("TApplication: Sending mouse event to menuBar with position=(\(mouseEvent.position.x), \(mouseEvent.position.y))")
             if let menuBar = menuBar {
                 menuBar.handleEvent(.mouse(mouseEvent)) // Use original coordinates for menu bar
             }
+            DebugLogger.log("TApplication: Sending mouse event to desktop with position=(\(adjustedMouseEvent.position.x), \(adjustedMouseEvent.position.y))")
             desktop.handleEvent(.mouse(adjustedMouseEvent)) // Use adjusted coordinates for desktop
             
         case .terminalResize:
@@ -206,6 +227,8 @@ open class TApplication {
     public func redraw() {
         desktop.draw()
         menuBar?.draw()
+        // Draw cursor after menu bar so it appears on top
+        desktop.drawCursor()
         try? SwiftyTermUI.shared.refresh()
     }
 }
