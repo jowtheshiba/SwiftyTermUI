@@ -91,10 +91,10 @@ open class TApplication {
         }
     }
     
-    /// Checks if event is a mouse move event
+    /// Checks if event is a mouse move or drag event (needs immediate redraw)
     private func isMouseMoveEvent(_ event: InputEvent) -> Bool {
         if case .mouse(let mouse) = event {
-            return mouse.action == .move
+            return mouse.action == .move || mouse.action == .drag
         }
         return false
     }
