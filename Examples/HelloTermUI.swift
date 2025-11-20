@@ -48,6 +48,8 @@ struct HelloTermUIApp {
                 switch event {
                 case .keyPress:
                     inputDetected = true
+                case .mouse:
+                    break
                 case .terminalResize:
                     break
                 }

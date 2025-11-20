@@ -108,6 +108,9 @@ struct InputExample {
                         try tui.refresh()
                     }
                     
+                case .mouse:
+                    break
+                    
                 case .terminalResize:
                     tui.clear()
                     tui.drawString(row: 1, column: 2, text: "Terminal resized!", attributes: [.bold], foregroundColor: .brightRed)

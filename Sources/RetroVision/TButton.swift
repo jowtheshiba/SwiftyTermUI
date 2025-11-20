@@ -5,6 +5,7 @@ public class TButton: TView {
     public var action: () -> Void
     
     public var isPressed: Bool = false
+    private var isMouseDownInside = false
     
     public init(frame: Rect, title: String, action: @escaping () -> Void) {
         self.title = title
@@ -141,6 +142,32 @@ public class TButton: TView {
                     action()
                     isPressed = false
                 }
+            }
+            
+        default:
+            break
+        }
+        
+        super.handleEvent(event)
+    }
+    
+    public override func mouseEvent(_ event: TEvent.MouseEvent) {
+        switch event.action {
+        case .down where event.button == .left:
+            isPressed = true
+            isMouseDownInside = true
+            
+        case .drag where event.button == .left:
+            if isMouseDownInside {
+                isPressed = bounds.contains(event.position)
+            }
+            
+        case .up where event.button == .left:
+            let shouldTrigger = isMouseDownInside && bounds.contains(event.position)
+            isMouseDownInside = false
+            isPressed = false
+            if shouldTrigger {
+                action()
             }
             
         default:

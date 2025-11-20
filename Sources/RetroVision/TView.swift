@@ -6,6 +6,10 @@ open class TView {
     public var bounds: Rect {
         Rect(x: 0, y: 0, width: frame.width, height: frame.height)
     }
+    public var globalFrame: Rect {
+        let origin = localToGlobal(Point(x: 0, y: 0))
+        return Rect(x: origin.x, y: origin.y, width: frame.width, height: frame.height)
+    }
     
     public weak var superview: TView?
     public var subviews: [TView] = []
@@ -39,10 +43,35 @@ open class TView {
     }
     
     open func handleEvent(_ event: TEvent) {
-        // Pass event to subviews (simple responder chain)
-        for view in subviews.reversed() {
-            view.handleEvent(event)
+        switch event {
+        case .mouse(let mouseEvent):
+            handleMouseEvent(mouseEvent)
+        default:
+            // Pass event to subviews (simple responder chain)
+            for view in subviews.reversed() {
+                view.handleEvent(event)
+            }
         }
+    }
+    
+    open func handleMouseEvent(_ event: TEvent.MouseEvent) {
+        guard isVisible else { return }
+        
+        for view in subviews.reversed() where view.isVisible {
+            let localPoint = view.globalToLocal(event.position)
+            if view.bounds.contains(localPoint) {
+                var localizedEvent = event
+                localizedEvent.position = localPoint
+                view.handleMouseEvent(localizedEvent)
+                return
+            }
+        }
+        
+        mouseEvent(event)
+    }
+    
+    open func mouseEvent(_ event: TEvent.MouseEvent) {
+        // Subclasses can override to handle pointer interactions
     }
     
     /// Converts a point from local coordinates to global screen coordinates
@@ -60,9 +89,35 @@ open class TView {
         
         return p
     }
+    
+    /// Converts a point from global coordinates to the local coordinate space of this view
+    public func globalToLocal(_ point: Point) -> Point {
+        let origin = localToGlobal(Point(x: 0, y: 0))
+        return Point(x: point.x - origin.x, y: point.y - origin.y)
+    }
+    
+    /// Whether the view contains a global point
+    public func contains(globalPoint: Point) -> Bool {
+        let localPoint = globalToLocal(globalPoint)
+        return bounds.contains(localPoint)
+    }
+    
+    /// Brings a subview to the front (end of the array == front)
+    public func bringSubviewToFront(_ view: TView) {
+        guard let index = subviews.firstIndex(where: { $0 === view }) else { return }
+        subviews.remove(at: index)
+        subviews.append(view)
+    }
+    
+    /// Sends a subview to the back (beginning of the array == back)
+    public func sendSubviewToBack(_ view: TView) {
+        guard let index = subviews.firstIndex(where: { $0 === view }) else { return }
+        subviews.remove(at: index)
+        subviews.insert(view, at: 0)
+    }
 }
 
-public struct Rect: Equatable {
+public struct Rect: Equatable, Sendable {
     public var x: Int
     public var y: Int
     public var width: Int
@@ -83,7 +138,7 @@ public struct Rect: Equatable {
     }
 }
 
-public struct Point: Equatable {
+public struct Point: Equatable, Sendable {
     public var x: Int
     public var y: Int
     

@@ -4,6 +4,7 @@ import Foundation
 /// Types of events that can occur
 public enum InputEvent: Equatable {
     case keyPress(Key)
+    case mouse(InputMouseEvent)
     case terminalResize
 }
 
@@ -44,21 +45,69 @@ public enum Key: Equatable {
     case unknown
 }
 
+/// Mouse event payload
+public struct InputMouseEvent: Equatable, Sendable {
+    public enum Button: Equatable, Sendable {
+        case left
+        case middle
+        case right
+        case wheelUp
+        case wheelDown
+        case none
+    }
+    
+    public enum Action: Equatable, Sendable {
+        case down
+        case up
+        case drag
+        case move
+        case scroll
+    }
+    
+    public struct Modifiers: OptionSet, Equatable, Sendable {
+        public let rawValue: Int
+        
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
+        
+        public static let shift = Modifiers(rawValue: 1 << 0)
+        public static let alt = Modifiers(rawValue: 1 << 1)
+        public static let control = Modifiers(rawValue: 1 << 2)
+    }
+    
+    public let row: Int
+    public let column: Int
+    public let button: Button
+    public let action: Action
+    public let modifiers: Modifiers
+    
+    public init(row: Int, column: Int, button: Button, action: Action, modifiers: Modifiers = []) {
+        self.row = row
+        self.column = column
+        self.button = button
+        self.action = action
+        self.modifiers = modifiers
+    }
+}
+
 /// Terminal input handler
-public final class InputHandler {
+@MainActor
+public final class InputHandler: NSObject {
     private var buffer = ""
     private let lock = NSLock()
     private let eventQueue = EventQueue()
     private let resizeNotification = NSNotification.Name("TerminalDidResize")
 
-    public init() {
+    public override init() {
+        super.init()
+        
         NotificationCenter.default.addObserver(
-            forName: resizeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.eventQueue.enqueue(.terminalResize)
-        }
+            self,
+            selector: #selector(handleResizeNotification(_:)),
+            name: resizeNotification,
+            object: nil
+        )
     }
 
     /// Reads the next input event (non-blocking)
@@ -71,15 +120,34 @@ public final class InputHandler {
         lock.lock()
         defer { lock.unlock() }
 
-        // Try to read a character from stdin
-        var byte: UInt8 = 0
-        let bytesRead = read(STDIN_FILENO, &byte, 1)
+        // Try to read available bytes from stdin (read up to 64 bytes to capture full mouse sequences)
+        var readBuffer = [UInt8](repeating: 0, count: 64)
+        let bytesRead = read(STDIN_FILENO, &readBuffer, 64)
 
         if bytesRead > 0 {
-            // Add the character to the buffer
-            buffer.append(Character(UnicodeScalar(byte)))
+            // Add all read characters to the buffer
+            for i in 0..<bytesRead {
+                buffer.append(Character(UnicodeScalar(readBuffer[i])))
+            }
+            // Log buffer content in hex for better debugging of escape sequences
+            let hexString = readBuffer.prefix(bytesRead).map { String(format: "%02X", $0) }.joined(separator: " ")
+            DebugLogger.log("InputHandler read \(bytesRead) bytes: [\(hexString)]")
+        } else if bytesRead < 0 {
+            // Error reading (EAGAIN/EWOULDBLOCK in non-blocking mode is normal)
+            let errno = Darwin.errno
+            if errno != EAGAIN && errno != EWOULDBLOCK {
+                DebugLogger.log("InputHandler read error: errno=\(errno)")
+            }
         }
 
+        // Try to recognize a mouse event first
+        if let mouseEvent = parseMouseSequence() {
+            DebugLogger.log("InputHandler parsed mouse event button=\(mouseEvent.button) action=\(mouseEvent.action) col=\(mouseEvent.column) row=\(mouseEvent.row) modifiers=\(mouseEvent.modifiers.rawValue)")
+            let event = InputEvent.mouse(mouseEvent)
+            eventQueue.enqueue(event)
+            return eventQueue.dequeue()
+        }
+        
         // Try to recognize the combination
         if let key = parseBuffer() {
             let event = InputEvent.keyPress(key)
@@ -184,6 +252,90 @@ public final class InputHandler {
 
         return nil
     }
+    
+    /// Attempts to parse an SGR mouse sequence
+    private func parseMouseSequence() -> InputMouseEvent? {
+        guard buffer.hasPrefix("\u{1B}[<") else {
+            return nil
+        }
+        
+        guard let terminatorIndex = buffer.firstIndex(where: { $0 == "M" || $0 == "m" }) else {
+            // Wait for the rest of the sequence
+            return nil
+        }
+        
+        let nextIndex = buffer.index(after: terminatorIndex)
+        let sequence = String(buffer[..<nextIndex])
+        buffer.removeSubrange(buffer.startIndex..<nextIndex)
+        
+        return decodeSGRMouse(sequence: sequence)
+    }
+    
+    /// Decodes CSI < ... mouse sequence (SGR mode)
+    private func decodeSGRMouse(sequence: String) -> InputMouseEvent? {
+        guard sequence.hasPrefix("\u{1B}[<") else {
+            return nil
+        }
+        
+        guard let finalCharacter = sequence.last, finalCharacter == "M" || finalCharacter == "m" else {
+            return nil
+        }
+        
+        let payload = sequence.dropFirst(3).dropLast()
+        let parts = payload.split(separator: ";")
+        guard parts.count == 3,
+              let buttonCode = Int(parts[0]),
+              let column = Int(parts[1]),
+              let row = Int(parts[2]) else {
+            return nil
+        }
+        
+        DebugLogger.log("InputHandler decodeSGRMouse: raw button=\(buttonCode) column=\(column) row=\(row)")
+        let zeroBasedColumn = max(column - 1, 0)
+        let zeroBasedRow = max(row - 1, 0)
+        DebugLogger.log("InputHandler decodeSGRMouse: zero-based column=\(zeroBasedColumn) row=\(zeroBasedRow)")
+        
+        var modifiers: InputMouseEvent.Modifiers = []
+        if (buttonCode & 4) != 0 { modifiers.insert(.shift) }
+        if (buttonCode & 8) != 0 { modifiers.insert(.alt) }
+        if (buttonCode & 16) != 0 { modifiers.insert(.control) }
+        
+        let isMotion = (buttonCode & 32) != 0
+        let scrollFlag = (buttonCode & 64) != 0
+        let baseButton = buttonCode & 0b11
+        let isRelease = finalCharacter == "m" || (!scrollFlag && baseButton == 3 && !isMotion)
+        
+        var button: InputMouseEvent.Button = .none
+        var action: InputMouseEvent.Action = .move
+        
+        if scrollFlag {
+            button = (buttonCode & 1) == 0 ? .wheelUp : .wheelDown
+            action = .scroll
+        } else {
+            switch baseButton {
+            case 0: button = .left
+            case 1: button = .middle
+            case 2: button = .right
+            default: button = .none
+            }
+            
+            if isRelease {
+                action = .up
+            } else if isMotion {
+                action = button == .none ? .move : .drag
+            } else {
+                action = .down
+            }
+        }
+        
+        return InputMouseEvent(
+            row: zeroBasedRow,
+            column: zeroBasedColumn,
+            button: button,
+            action: action,
+            modifiers: modifiers
+        )
+    }
 
     /// Parses escape sequences
     private func parseEscapeSequence() -> Key? {
@@ -272,7 +424,12 @@ public final class InputHandler {
         return .unknown
     }
 
+    @objc
+    private func handleResizeNotification(_ notification: Notification) {
+        eventQueue.enqueue(.terminalResize)
+    }
+    
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        NotificationCenter.default.removeObserver(self, name: resizeNotification, object: nil)
     }
 }

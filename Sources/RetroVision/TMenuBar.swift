@@ -231,6 +231,8 @@ public class TMenuBar: TView {
         default:
             break
         }
+        
+        super.handleEvent(event)
     }
     
     private func handleKeyEvent(_ key: Key) {

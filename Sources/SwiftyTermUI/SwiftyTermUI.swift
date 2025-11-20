@@ -16,6 +16,7 @@ public final class SwiftyTermUI {
     private var cursorX = 0
     private var cursorY = 0
     private var cursorVisible = true
+    private var mouseCaptureEnabled = false
 
     private init() {
         let (width, height) = TerminalManager.shared.getTerminalSize()
@@ -50,6 +51,7 @@ public final class SwiftyTermUI {
         guard isInitialized else { return }
 
         NotificationCenter.default.removeObserver(self)
+        disableMouseCapture()
         terminal.cleanup()
         isInitialized = false
     }
@@ -173,6 +175,9 @@ public final class SwiftyTermUI {
         // Use optimized renderer with caching and batching
         let commands = renderOptimizer.generateOptimizedRenderCommands(buffer: screenBuffer)
         terminal.writeToTerminal(commands)
+        
+        // Position cursor to the stored position after rendering
+        terminal.writeToTerminal("\u{1B}[\(cursorY + 1);\(cursorX + 1)H")
     }
 
     // MARK: - Input
@@ -190,6 +195,28 @@ public final class SwiftyTermUI {
     /// Clears event queue
     public func clearEvents() {
         inputHandler.clearEvents()
+    }
+    
+    // MARK: - Mouse
+    
+    public func enableMouseCapture(allMotion: Bool = true) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        guard !mouseCaptureEnabled else { return }
+        
+        terminal.enableMouseTracking(allMotion: allMotion)
+        mouseCaptureEnabled = true
+    }
+    
+    public func disableMouseCapture() {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        guard mouseCaptureEnabled else { return }
+        
+        terminal.disableMouseTracking()
+        mouseCaptureEnabled = false
     }
 
     // MARK: - Terminal Info

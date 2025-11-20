@@ -11,6 +11,7 @@ public final class TerminalManager {
     private let lock = NSLock()
     private var writeBuffer = ""
     private let bufferFlushThreshold = 8192 // Flush when buffer reaches 8KB
+    private var isMouseTrackingEnabled = false
 
     private init() {}
 
@@ -63,6 +64,12 @@ public final class TerminalManager {
 
         guard isRawMode else { return }
 
+        // Disable mouse tracking if enabled
+        if isMouseTrackingEnabled {
+            writeToTerminal("\u{1B}[?1006l\u{1B}[?1003l\u{1B}[?1002l")
+            isMouseTrackingEnabled = false
+        }
+        
         // Show cursor
         writeBuffer.append("\u{1B}[?25h")
 
@@ -126,6 +133,28 @@ public final class TerminalManager {
             FileHandle.standardOutput.write(data)
         }
         writeBuffer.removeAll(keepingCapacity: true)
+    }
+    
+    // MARK: - Mouse Tracking
+    
+    public func enableMouseTracking(allMotion: Bool = true) {
+        guard !isMouseTrackingEnabled else { return }
+        
+        let baseSequence = "\u{1B}[?1000h\u{1B}[?1002h" // Enable basic + drag tracking
+        let motionSequence = allMotion ? "\u{1B}[?1003h" : ""
+        let sgrSequence = "\u{1B}[?1006h" // Extended coordinates (SGR)
+        writeToTerminal(baseSequence + motionSequence + sgrSequence)
+        DebugLogger.log("Mouse tracking enabled (allMotion=\(allMotion))")
+        isMouseTrackingEnabled = true
+    }
+    
+    public func disableMouseTracking() {
+        guard isMouseTrackingEnabled else { return }
+        
+        let sequence = "\u{1B}[?1006l\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l"
+        writeToTerminal(sequence)
+        DebugLogger.log("Mouse tracking disabled")
+        isMouseTrackingEnabled = false
     }
 }
 
