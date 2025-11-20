@@ -52,20 +52,51 @@ open class TApplication {
             redraw()
             
             while isRunning {
-                // Handle events
-                if let event = SwiftyTermUI.shared.readEvent() {
-                    handleLowLevelEvent(event)
+                var hasEvents = false
+                var needsRedraw = false
+                
+                // Process events with immediate redraw for mouse movements
+                // This ensures cursor updates smoothly without lag
+                for _ in 0..<20 {
+                    if let event = SwiftyTermUI.shared.readEvent() {
+                        hasEvents = true
+                        let isMouseMove = isMouseMoveEvent(event)
+                        handleLowLevelEvent(event)
+                        
+                        // Redraw immediately after mouse move events for smooth cursor tracking
+                        if isMouseMove {
+                            redraw()
+                        } else {
+                            // Mark that we need redraw for non-mouse events
+                            needsRedraw = true
+                        }
+                    } else {
+                        break // No more events available
+                    }
                 }
                 
-                // Redraw if needed (optimized by SwiftyTermUI)
-                redraw()
+                // Redraw for non-mouse events (mouse moves already redrawn above)
+                if needsRedraw {
+                    redraw()
+                }
                 
-                // Sleep a bit to save CPU
-                Thread.sleep(forTimeInterval: 0.01)
+                // Very small sleep only when idle to prevent CPU spinning
+                // No sleep when processing events for maximum responsiveness
+                if !hasEvents {
+                    Thread.sleep(forTimeInterval: 0.001) // 1ms when idle
+                }
             }
         } catch {
             print("Error: \(error)")
         }
+    }
+    
+    /// Checks if event is a mouse move event
+    private func isMouseMoveEvent(_ event: InputEvent) -> Bool {
+        if case .mouse(let mouse) = event {
+            return mouse.action == .move
+        }
+        return false
     }
     
     @MainActor
