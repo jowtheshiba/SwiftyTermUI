@@ -1,3 +1,4 @@
+import Foundation
 import SwiftyTermUI
 
 public class TButton: TView {
@@ -6,6 +7,9 @@ public class TButton: TView {
     
     public var isPressed: Bool = false
     private var isMouseDownInside = false
+    
+    /// Delay in microseconds before action executes (Turbo Vision style)
+    public var actionDelayMicroseconds: useconds_t = 50_000  // 50ms
     
     public init(frame: Rect, title: String, action: @escaping () -> Void) {
         self.title = title
@@ -18,10 +22,19 @@ public class TButton: TView {
         guard isVisible else { return }
         
         let tui = SwiftyTermUI.shared
-        let origin = localToGlobal(Point(x: 0, y: 0))
+        let baseOrigin = localToGlobal(Point(x: 0, y: 0))
         
         let buttonWidth = max(frame.width, 1)
         let buttonHeight = max(frame.height, 1)
+        
+        // When pressed, button shifts right and down by 1 (into where shadow was)
+        // This creates the "pressed into the screen" effect
+        let origin: Point
+        if isPressed {
+            origin = Point(x: baseOrigin.x + 1, y: baseOrigin.y + 1)
+        } else {
+            origin = baseOrigin
+        }
         
         // Colors
         // Normal: Black on Green
@@ -74,7 +87,6 @@ public class TButton: TView {
         // Only if not pressed (simulates depression)
         if !isPressed {
             let shadowForeground: Color = .black
-            let shadowMidtone: Color = .brightBlack
             let shadowBackground = resolvedShadowBackgroundColor()
             
             // Right shadow column
@@ -133,14 +145,19 @@ public class TButton: TView {
             }
         }
     }
+    
+    @MainActor
     public override func handleEvent(_ event: TEvent) {
         switch event {
         case .key(let key):
             if isFocused {
                 if key == .enter || key == .character(" ") {
+                    // Turbo Vision press effect for keyboard
                     isPressed = true
-                    action()
+                    TApplication.shared.redraw()
+                    usleep(actionDelayMicroseconds)
                     isPressed = false
+                    action()
                 }
             }
             
@@ -151,6 +168,7 @@ public class TButton: TView {
         super.handleEvent(event)
     }
     
+    @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) {
         switch event.action {
         case .down where event.button == .left:
@@ -165,15 +183,22 @@ public class TButton: TView {
         case .up where event.button == .left:
             let shouldTrigger = isMouseDownInside && bounds.contains(event.position)
             isMouseDownInside = false
-            isPressed = false
             if shouldTrigger {
+                // Turbo Vision press effect - keep pressed briefly
+                TApplication.shared.redraw()
+                usleep(actionDelayMicroseconds)
+                isPressed = false
                 action()
+            } else {
+                isPressed = false
             }
             
         default:
             break
         }
     }
+    
+
     
     private func resolvedShadowBackgroundColor() -> Color {
         var current: TView? = self
@@ -191,3 +216,4 @@ public class TButton: TView {
         return .white
     }
 }
+

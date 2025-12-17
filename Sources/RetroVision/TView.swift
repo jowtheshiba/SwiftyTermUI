@@ -42,6 +42,7 @@ open class TView {
         }
     }
     
+    @MainActor
     open func handleEvent(_ event: TEvent) {
         switch event {
         case .mouse(let mouseEvent):
@@ -54,25 +55,32 @@ open class TView {
         }
     }
     
+    @MainActor
     @discardableResult
     open func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         guard isVisible else { return false }
         
+        // Event position is in GLOBAL screen coordinates
+        // We convert to local only for hit testing, but pass global coords to children
         for view in subviews.reversed() where view.isVisible {
             let localPoint = view.globalToLocal(event.position)
             if view.bounds.contains(localPoint) {
-                var localizedEvent = event
-                localizedEvent.position = localPoint
-                if view.handleMouseEvent(localizedEvent) {
+                // Pass the ORIGINAL event with global coordinates to child
+                // The child will do its own globalToLocal conversion
+                if view.handleMouseEvent(event) {
                     return true // Event was handled by subview
                 }
             }
         }
         
-        mouseEvent(event)
+        // For the mouseEvent callback, provide LOCAL coordinates for convenience
+        var localizedEvent = event
+        localizedEvent.position = globalToLocal(event.position)
+        mouseEvent(localizedEvent)
         return false // Event not handled
     }
     
+    @MainActor
     open func mouseEvent(_ event: TEvent.MouseEvent) {
         // Subclasses can override to handle pointer interactions
     }

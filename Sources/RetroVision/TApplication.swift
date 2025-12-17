@@ -56,32 +56,18 @@ open class TApplication {
                 var hasEvents = false
                 var needsRedraw = false
                 
-                // OPTIMIZATION: Poll all mouse events at once with coalescing
-                // This reads all available mouse data and coalesces consecutive move events
-                // into a single event with the final position, eliminating cursor lag
-                let mouseEvents = SwiftyTermUI.shared.pollMouseEvents()
-                if !mouseEvents.isEmpty {
-                    hasEvents = true
-                    for event in mouseEvents {
-                        handleLowLevelEvent(event)
-                    }
-                    // Single redraw after processing all coalesced mouse events
-                    redraw()
-                }
-                
-                // Process keyboard and other events (up to 10 per iteration)
-                for _ in 0..<10 {
+                // Process events - redraw immediately after mouse events for responsive cursor
+                for _ in 0..<20 {
                     if let event = SwiftyTermUI.shared.readEvent() {
-                        // Skip mouse events here - they're handled above via pollMouseEvents
-                        if case .mouse = event {
-                            handleLowLevelEvent(event)
-                            redraw()
-                            continue
-                        }
-                        
                         hasEvents = true
                         handleLowLevelEvent(event)
-                        needsRedraw = true
+                        
+                        // Mouse events need immediate redraw for responsive cursor
+                        if case .mouse = event {
+                            redraw()
+                        } else {
+                            needsRedraw = true
+                        }
                     } else {
                         break // No more events available
                     }
