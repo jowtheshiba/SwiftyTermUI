@@ -191,6 +191,55 @@ public final class InputHandler: NSObject {
         return events
     }
     
+    /// Reads all available mouse events and coalesces consecutive move events
+    /// Returns the coalesced events - multiple moves become a single move with final position
+    public func pollMouseEvents() -> [InputEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        // Read all available bytes
+        var readBuffer = [UInt8](repeating: 0, count: 256)
+        let bytesRead = read(STDIN_FILENO, &readBuffer, 256)
+        
+        if bytesRead > 0 {
+            for i in 0..<bytesRead {
+                buffer.append(Character(UnicodeScalar(readBuffer[i])))
+            }
+        }
+        
+        // Parse all mouse events from buffer
+        let mouseEvents = parseAllMouseSequences()
+        
+        if mouseEvents.isEmpty {
+            return []
+        }
+        
+        // Coalesce consecutive move events - keep only the last position
+        var result: [InputEvent] = []
+        var lastMoveEvent: InputMouseEvent? = nil
+        
+        for event in mouseEvents {
+            if event.action == .move {
+                // Coalesce: just remember the last move position
+                lastMoveEvent = event
+            } else {
+                // Non-move event: flush any pending move first
+                if let move = lastMoveEvent {
+                    result.append(.mouse(move))
+                    lastMoveEvent = nil
+                }
+                result.append(.mouse(event))
+            }
+        }
+        
+        // Don't forget the last move event
+        if let move = lastMoveEvent {
+            result.append(.mouse(move))
+        }
+        
+        return result
+    }
+    
     /// Clears the event queue
     public func clearEvents() {
         eventQueue.clear()
@@ -269,6 +318,37 @@ public final class InputHandler: NSObject {
         buffer.removeSubrange(buffer.startIndex..<nextIndex)
         
         return decodeSGRMouse(sequence: sequence)
+    }
+    
+    /// Parses ALL mouse sequences from the buffer at once
+    /// This is critical for coalescing mouse move events and reducing lag
+    private func parseAllMouseSequences() -> [InputMouseEvent] {
+        var events: [InputMouseEvent] = []
+        
+        while buffer.contains("\u{1B}[<") {
+            guard let startIndex = buffer.range(of: "\u{1B}[<")?.lowerBound else {
+                break
+            }
+            
+            // Find terminator after the start
+            let searchRange = startIndex..<buffer.endIndex
+            guard let terminatorIndex = buffer[searchRange].firstIndex(where: { $0 == "M" || $0 == "m" }) else {
+                // Incomplete sequence, wait for more data
+                break
+            }
+            
+            let nextIndex = buffer.index(after: terminatorIndex)
+            let sequence = String(buffer[startIndex..<nextIndex])
+            
+            // Remove everything up to and including this sequence
+            buffer.removeSubrange(buffer.startIndex..<nextIndex)
+            
+            if let event = decodeSGRMouse(sequence: sequence) {
+                events.append(event)
+            }
+        }
+        
+        return events
     }
     
     /// Decodes CSI < ... mouse sequence (SGR mode)

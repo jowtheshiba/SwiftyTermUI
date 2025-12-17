@@ -197,6 +197,12 @@ public final class SwiftyTermUI {
         inputHandler.clearEvents()
     }
     
+    /// Polls all available mouse events with coalescing for smooth cursor tracking
+    /// Coalesces consecutive move events into single event with final position
+    public func pollMouseEvents() -> [InputEvent] {
+        inputHandler.pollMouseEvents()
+    }
+    
     // MARK: - Mouse
     
     public func enableMouseCapture(allMotion: Bool = true) {

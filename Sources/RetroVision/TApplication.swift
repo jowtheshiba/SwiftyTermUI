@@ -47,9 +47,6 @@ open class TApplication {
                 SwiftyTermUI.shared.shutdown()
             }
             
-            // Enable mouse reporting if supported
-            // SwiftyTermUI.shared.enableMouse() // Assuming this exists or is default
-            
             isRunning = true
             
             // Initial draw
@@ -59,35 +56,43 @@ open class TApplication {
                 var hasEvents = false
                 var needsRedraw = false
                 
-                // Process events with immediate redraw for mouse movements
-                // This ensures cursor updates smoothly without lag
-                for _ in 0..<20 {
-                    if let event = SwiftyTermUI.shared.readEvent() {
-                        hasEvents = true
-                        let isMouseMove = isMouseMoveEvent(event)
-                        let isMouseClick = isMouseClickEvent(event)
+                // OPTIMIZATION: Poll all mouse events at once with coalescing
+                // This reads all available mouse data and coalesces consecutive move events
+                // into a single event with the final position, eliminating cursor lag
+                let mouseEvents = SwiftyTermUI.shared.pollMouseEvents()
+                if !mouseEvents.isEmpty {
+                    hasEvents = true
+                    for event in mouseEvents {
                         handleLowLevelEvent(event)
-                        
-                        // Redraw immediately after mouse move events for smooth cursor tracking
-                        // Also redraw immediately after mouse clicks (e.g., menu bar, buttons)
-                        if isMouseMove || isMouseClick {
+                    }
+                    // Single redraw after processing all coalesced mouse events
+                    redraw()
+                }
+                
+                // Process keyboard and other events (up to 10 per iteration)
+                for _ in 0..<10 {
+                    if let event = SwiftyTermUI.shared.readEvent() {
+                        // Skip mouse events here - they're handled above via pollMouseEvents
+                        if case .mouse = event {
+                            handleLowLevelEvent(event)
                             redraw()
-                        } else {
-                            // Mark that we need redraw for non-mouse events
-                            needsRedraw = true
+                            continue
                         }
+                        
+                        hasEvents = true
+                        handleLowLevelEvent(event)
+                        needsRedraw = true
                     } else {
                         break // No more events available
                     }
                 }
                 
-                // Redraw for non-mouse events (mouse moves already redrawn above)
+                // Redraw for keyboard events
                 if needsRedraw {
                     redraw()
                 }
                 
                 // Very small sleep only when idle to prevent CPU spinning
-                // No sleep when processing events for maximum responsiveness
                 if !hasEvents {
                     Thread.sleep(forTimeInterval: 0.001) // 1ms when idle
                 }
