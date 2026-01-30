@@ -51,6 +51,15 @@ struct RetroDemo {
         // Create Editor Window (Blue)
         let editorWindow = TWindow(frame: Rect(x: 5, y: 3, width: 50, height: 15), title: "Editor Window", style: .window)
         
+        // Examples: Static text + checkbox
+        let editorHelpText = TStaticText(
+            frame: Rect(x: 2, y: 2, width: 30, height: 2),
+            text: "RetroVision examples\n(static text)"
+        )
+        let editorCheckBox = TCheckBox(frame: Rect(x: 2, y: 5, width: 25, height: 1), title: "Auto-indent", isChecked: true)
+        editorWindow.addSubview(editorHelpText)
+        editorWindow.addSubview(editorCheckBox)
+        
         // Add buttons to editor window
         let okButton = TButton(frame: Rect(x: 10, y: 11, width: 12, height: 1), title: "OK") {
         }
@@ -66,6 +75,12 @@ struct RetroDemo {
         // Create Dialog Window (Grey)
         let dialogWindow = TWindow(frame: Rect(x: 20, y: 8, width: 40, height: 12), title: "Find Dialog", style: .dialog)
         
+        // Examples: Label + checkbox
+        let matchCaseBox = TCheckBox(frame: Rect(x: 3, y: 3, width: 30, height: 1), title: "Match case", isChecked: false)
+        let matchCaseLabel = TLabel(frame: Rect(x: 3, y: 2, width: 30, height: 1), text: "~Match case:", target: matchCaseBox)
+        dialogWindow.addSubview(matchCaseLabel)
+        dialogWindow.addSubview(matchCaseBox)
+        
         // Add buttons to dialog
         let findButton = TButton(frame: Rect(x: 5, y: 8, width: 12, height: 1), title: "Find") {
         }
@@ -76,6 +91,20 @@ struct RetroDemo {
         dialogWindow.addSubview(findButton)
         dialogWindow.addSubview(replaceButton)
         app.desktop.addSubview(dialogWindow)
+        
+        // Create Options Window (Blue)
+        let optionsWindow = TWindow(frame: Rect(x: 58, y: 4, width: 24, height: 10), title: "Options", style: .window)
+        
+        // Examples: Radio group
+        let radioLabel = TStaticText(frame: Rect(x: 2, y: 1, width: 18, height: 1), text: "Theme")
+        let radioLight = TRadioBox(frame: Rect(x: 2, y: 3, width: 18, height: 1), title: "Light", groupID: "theme", isSelected: true)
+        let radioDark = TRadioBox(frame: Rect(x: 2, y: 4, width: 18, height: 1), title: "Dark", groupID: "theme", isSelected: false)
+        let radioAuto = TRadioBox(frame: Rect(x: 2, y: 5, width: 18, height: 1), title: "Auto", groupID: "theme", isSelected: false)
+        optionsWindow.addSubview(radioLabel)
+        optionsWindow.addSubview(radioLight)
+        optionsWindow.addSubview(radioDark)
+        optionsWindow.addSubview(radioAuto)
+        app.desktop.addSubview(optionsWindow)
         
         app.run()
     }
