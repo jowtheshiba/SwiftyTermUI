@@ -27,11 +27,10 @@ public class TButton: TView {
         let buttonWidth = max(frame.width, 1)
         let buttonHeight = max(frame.height, 1)
         
-        // When pressed, button shifts right and down by 1 (into where shadow was)
-        // This creates the "pressed into the screen" effect
+        // When pressed, button shifts right by 1 (no vertical offset)
         let origin: Point
         if isPressed {
-            origin = Point(x: baseOrigin.x + 1, y: baseOrigin.y + 1)
+            origin = Point(x: baseOrigin.x + 1, y: baseOrigin.y)
         } else {
             origin = baseOrigin
         }
@@ -39,10 +38,10 @@ public class TButton: TView {
         // Colors
         // Normal: Black on Green
         // Focused: White on Green (Bright)
-        // Pressed: Black on Cyan
+        // Pressed: same colors as normal (no color shift)
         
-        let fg: Color = isPressed ? .black : (isFocused ? .brightWhite : .black)
-        let bg: Color = isPressed ? .cyan : .green
+        let fg: Color = isFocused ? .brightWhite : .black
+        let bg: Color = .green
         
         // Draw Button Body
         // Format: [ Title ]

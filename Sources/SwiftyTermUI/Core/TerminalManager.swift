@@ -144,7 +144,6 @@ public final class TerminalManager {
         let motionSequence = allMotion ? "\u{1B}[?1003h" : ""
         let sgrSequence = "\u{1B}[?1006h" // Extended coordinates (SGR)
         writeToTerminal(baseSequence + motionSequence + sgrSequence)
-        DebugLogger.log("Mouse tracking enabled (allMotion=\(allMotion))")
         isMouseTrackingEnabled = true
     }
     
@@ -153,7 +152,6 @@ public final class TerminalManager {
         
         let sequence = "\u{1B}[?1006l\u{1B}[?1003l\u{1B}[?1002l\u{1B}[?1000l"
         writeToTerminal(sequence)
-        DebugLogger.log("Mouse tracking disabled")
         isMouseTrackingEnabled = false
     }
 }

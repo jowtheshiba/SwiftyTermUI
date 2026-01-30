@@ -9,36 +9,35 @@ struct RetroDemo {
         
         // Create Menu Bar
         let fileMenu = TMenu(title: "File", items: [
-            TMenuItem(title: "New", action: { print("New file") }, shortcut: "F4"),
-            TMenuItem(title: "Open...", action: { print("Open file") }, shortcut: "F3"),
-            TMenuItem(title: "Save", action: { print("Save file") }, shortcut: "F2"),
+            TMenuItem(title: "New", action: {}, shortcut: "F4"),
+            TMenuItem(title: "Open...", action: {}, shortcut: "F3"),
+            TMenuItem(title: "Save", action: {}, shortcut: "F2"),
             TMenuItem.separator,
             TMenuItem(title: "Exit", action: { 
-                print("Exiting...")
                 exit(0)
             }, shortcut: "Alt+X")
         ])
         
         let editMenu = TMenu(title: "Edit", items: [
-            TMenuItem(title: "Undo", action: { print("Undo") }, shortcut: "Alt+BkSp"),
-            TMenuItem(title: "Redo", action: { print("Redo") }),
+            TMenuItem(title: "Undo", action: {}, shortcut: "Alt+BkSp"),
+            TMenuItem(title: "Redo", action: {}),
             TMenuItem.separator,
-            TMenuItem(title: "Cut", action: { print("Cut") }, shortcut: "Shift+Del"),
-            TMenuItem(title: "Copy", action: { print("Copy") }, shortcut: "Ctrl+Ins"),
-            TMenuItem(title: "Paste", action: { print("Paste") }, shortcut: "Shift+Ins"),
+            TMenuItem(title: "Cut", action: {}, shortcut: "Shift+Del"),
+            TMenuItem(title: "Copy", action: {}, shortcut: "Ctrl+Ins"),
+            TMenuItem(title: "Paste", action: {}, shortcut: "Shift+Ins"),
             TMenuItem.separator,
-            TMenuItem(title: "Clear", action: { print("Clear") })
+            TMenuItem(title: "Clear", action: {})
         ])
         
         let windowMenu = TMenu(title: "Window", items: [
-            TMenuItem(title: "Size/Move", action: { print("Size/Move") }, shortcut: "Ctrl+F5"),
-            TMenuItem(title: "Zoom", action: { print("Zoom") }, shortcut: "F5"),
-            TMenuItem(title: "Tile", action: { print("Tile") }),
-            TMenuItem(title: "Cascade", action: { print("Cascade") }),
+            TMenuItem(title: "Size/Move", action: {}, shortcut: "Ctrl+F5"),
+            TMenuItem(title: "Zoom", action: {}, shortcut: "F5"),
+            TMenuItem(title: "Tile", action: {}),
+            TMenuItem(title: "Cascade", action: {}),
             TMenuItem.separator,
-            TMenuItem(title: "Next", action: { print("Next window") }, shortcut: "F6"),
-            TMenuItem(title: "Previous", action: { print("Previous window") }, shortcut: "Shift+F6"),
-            TMenuItem(title: "Close", action: { print("Close window") }, shortcut: "Alt+F3")
+            TMenuItem(title: "Next", action: {}, shortcut: "F6"),
+            TMenuItem(title: "Previous", action: {}, shortcut: "Shift+F6"),
+            TMenuItem(title: "Close", action: {}, shortcut: "Alt+F3")
         ])
         
         let (cols, _) = SwiftyTermUI.shared.getTerminalSize()
@@ -50,12 +49,10 @@ struct RetroDemo {
         
         // Add buttons to editor window
         let okButton = TButton(frame: Rect(x: 10, y: 11, width: 12, height: 1), title: "OK") {
-            print("OK pressed in Editor")
         }
         okButton.isFocused = true
         
         let cancelButton = TButton(frame: Rect(x: 25, y: 11, width: 12, height: 1), title: "Cancel") {
-            print("Cancel pressed in Editor")
         }
         
         editorWindow.addSubview(okButton)
@@ -67,11 +64,9 @@ struct RetroDemo {
         
         // Add buttons to dialog
         let findButton = TButton(frame: Rect(x: 5, y: 8, width: 12, height: 1), title: "Find") {
-            print("Find pressed")
         }
         
         let replaceButton = TButton(frame: Rect(x: 20, y: 8, width: 15, height: 1), title: "Replace") {
-            print("Replace pressed")
         }
         
         dialogWindow.addSubview(findButton)

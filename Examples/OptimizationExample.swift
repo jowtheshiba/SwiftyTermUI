@@ -122,7 +122,6 @@ func main() {
         }
 
     } catch {
-        print("Error: \(error.localizedDescription)")
     }
 }
 

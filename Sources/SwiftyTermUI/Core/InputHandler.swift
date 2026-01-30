@@ -129,20 +129,15 @@ public final class InputHandler: NSObject {
             for i in 0..<bytesRead {
                 buffer.append(Character(UnicodeScalar(readBuffer[i])))
             }
-            // Log buffer content in hex for better debugging of escape sequences
-            let hexString = readBuffer.prefix(bytesRead).map { String(format: "%02X", $0) }.joined(separator: " ")
-            DebugLogger.log("InputHandler read \(bytesRead) bytes: [\(hexString)]")
         } else if bytesRead < 0 {
             // Error reading (EAGAIN/EWOULDBLOCK in non-blocking mode is normal)
             let errno = Darwin.errno
             if errno != EAGAIN && errno != EWOULDBLOCK {
-                DebugLogger.log("InputHandler read error: errno=\(errno)")
             }
         }
 
         // Try to recognize a mouse event first
         if let mouseEvent = parseMouseSequence() {
-            DebugLogger.log("InputHandler parsed mouse event button=\(mouseEvent.button) action=\(mouseEvent.action) col=\(mouseEvent.column) row=\(mouseEvent.row) modifiers=\(mouseEvent.modifiers.rawValue)")
             let event = InputEvent.mouse(mouseEvent)
             eventQueue.enqueue(event)
             return eventQueue.dequeue()
@@ -370,10 +365,8 @@ public final class InputHandler: NSObject {
             return nil
         }
         
-        DebugLogger.log("InputHandler decodeSGRMouse: raw button=\(buttonCode) column=\(column) row=\(row)")
         let zeroBasedColumn = max(column - 1, 0)
         let zeroBasedRow = max(row - 1, 0)
-        DebugLogger.log("InputHandler decodeSGRMouse: zero-based column=\(zeroBasedColumn) row=\(zeroBasedRow)")
         
         var modifiers: InputMouseEvent.Modifiers = []
         if (buttonCode & 4) != 0 { modifiers.insert(.shift) }

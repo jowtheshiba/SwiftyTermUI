@@ -54,7 +54,6 @@ public class TDesktop: TView {
         guard withinX && withinY else { return }
         
         let tui = SwiftyTermUI.shared
-        DebugLogger.log("TDesktop: Drawing cursor at row=\(cursorPosition.y) column=\(cursorPosition.x)")
         tui.drawChar(
             row: cursorPosition.y,
             column: cursorPosition.x,
@@ -66,7 +65,6 @@ public class TDesktop: TView {
     }
     
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
-        DebugLogger.log("TDesktop: handleMouseEvent action=\(event.action) button=\(event.button) position=(\(event.position.x), \(event.position.y))")
         cursorPosition = clampToDesktop(event.position)
         
         var consumed = false
@@ -79,7 +77,6 @@ public class TDesktop: TView {
             consumed = handleMouseUp(event)
         case .move:
             // Mouse movement - just update cursor position, already done above
-            DebugLogger.log("TDesktop: Mouse move event at (\(event.position.x), \(event.position.y))")
             break
         default:
             break
@@ -106,7 +103,6 @@ public class TDesktop: TView {
         bringSubviewToFront(window)
         
         if isTitleBarHit(window: window, at: event.position) {
-            DebugLogger.log("TDesktop: Starting drag for window '\(window.title)' at position (\(event.position.x), \(event.position.y))")
             startDragging(window: window, at: event.position)
             return true
         }
@@ -116,7 +112,6 @@ public class TDesktop: TView {
     
     private func handleMouseDrag(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left, let window = draggingWindow else { return false }
-        DebugLogger.log("TDesktop: Dragging window '\(window.title)' to position (\(event.position.x), \(event.position.y))")
         move(window: window, to: event.position)
         return true
     }
@@ -124,9 +119,6 @@ public class TDesktop: TView {
     private func handleMouseUp(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left else { return false }
         let wasDragging = draggingWindow != nil
-        if wasDragging, let window = draggingWindow {
-            DebugLogger.log("TDesktop: Finished dragging window '\(window.title)' at final position (\(event.position.x), \(event.position.y))")
-        }
         draggingWindow = nil
         return wasDragging
     }
@@ -154,9 +146,6 @@ public class TDesktop: TView {
         window.frame.x = clampedX - frame.x
         window.frame.y = clampedY - frame.y
         
-        if oldX != window.frame.x || oldY != window.frame.y {
-            DebugLogger.log("TDesktop: Moved window '\(window.title)' from (\(oldX), \(oldY)) to (\(window.frame.x), \(window.frame.y))")
-        }
     }
     
     private func focus(window: TWindow) {

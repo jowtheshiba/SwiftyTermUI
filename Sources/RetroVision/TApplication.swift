@@ -84,7 +84,6 @@ open class TApplication {
                 }
             }
         } catch {
-            print("Error: \(error)")
         }
     }
     
@@ -126,9 +125,7 @@ open class TApplication {
             desktop.handleEvent(tEvent)
             
         case .mouse(let mouse):
-            DebugLogger.log("TApplication received mouse input button=\(mouse.button) action=\(mouse.action) col=\(mouse.column) row=\(mouse.row)")
             let mouseEvent = convertMouseEvent(mouse)
-            DebugLogger.log("TApplication converted mouse to TEvent.MouseEvent position=(\(mouseEvent.position.x), \(mouseEvent.position.y)) action=\(mouseEvent.action) button=\(mouseEvent.button)")
             
             // Check if mouse is in menu bar area (y == 0) or potentially in dropdown
             // Menu bar is always at y=0, dropdown appears below it
@@ -138,10 +135,8 @@ open class TApplication {
             // First, always try menu bar if mouse is in menu bar area or might be in dropdown
             var menuBarHandled = false
             if let menuBar = menuBar, menuBar.isVisible && (isInMenuBarArea || mightBeInDropdown) {
-                DebugLogger.log("TApplication: Sending mouse event to menuBar with position=(\(mouseEvent.position.x), \(mouseEvent.position.y))")
                 // Menu bar's handleMouseEvent returns true if it handled the event
                 menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
-                DebugLogger.log("TApplication: MenuBar handled event: \(menuBarHandled)")
             }
             
             // Only send to desktop if menu bar didn't handle it and mouse is not in menu bar row
@@ -158,12 +153,8 @@ open class TApplication {
                         clickCount: mouseEvent.clickCount,
                         modifiers: mouseEvent.modifiers
                     )
-                    DebugLogger.log("TApplication adjusted mouse y coordinate: \(mouseEvent.position.y) -> \(adjustedPosition.y) (menuBarHeight=\(menuBarHeight))")
                 }
-                DebugLogger.log("TApplication: Sending mouse event to desktop with position=(\(adjustedMouseEvent.position.x), \(adjustedMouseEvent.position.y))")
                 desktop.handleEvent(.mouse(adjustedMouseEvent)) // Use adjusted coordinates for desktop
-            } else if isInMenuBarArea {
-                DebugLogger.log("TApplication: Mouse in menu bar area, not sending to desktop")
             }
             
         case .terminalResize:
