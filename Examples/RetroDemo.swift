@@ -44,7 +44,7 @@ struct RetroDemo {
             TMenuItem(title: "Close", action: {}, shortcut: "Alt+F3")
         ])
         
-        let (cols, _) = SwiftyTermUI.shared.getTerminalSize()
+        let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()
         let menuBar = TMenuBar(frame: Rect(x: 0, y: 0, width: cols, height: 1), menus: [fileMenu, editMenu, windowMenu])
         app.menuBar = menuBar
         
@@ -57,15 +57,25 @@ struct RetroDemo {
             text: "RetroVision examples\n(static text)"
         )
         let editorCheckBox = TCheckBox(frame: Rect(x: 2, y: 5, width: 25, height: 1), title: "Auto-indent", isChecked: true)
+        
+        let editorList = TListBox(
+            frame: Rect(x: 2, y: 7, width: 18, height: 4),
+            items: ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6"]
+        )
+        let editorScroll = TScrollBar(frame: Rect(x: 20, y: 7, width: 1, height: 4))
+        editorList.scrollBar = editorScroll
+        
         editorWindow.addSubview(editorHelpText)
         editorWindow.addSubview(editorCheckBox)
+        editorWindow.addSubview(editorList)
+        editorWindow.addSubview(editorScroll)
         
         // Add buttons to editor window
-        let okButton = TButton(frame: Rect(x: 10, y: 11, width: 12, height: 1), title: "OK") {
+        let okButton = TButton(frame: Rect(x: 10, y: 12, width: 12, height: 1), title: "OK") {
         }
         okButton.isFocused = true
         
-        let cancelButton = TButton(frame: Rect(x: 25, y: 11, width: 12, height: 1), title: "Cancel") {
+        let cancelButton = TButton(frame: Rect(x: 25, y: 12, width: 12, height: 1), title: "Cancel") {
         }
         
         editorWindow.addSubview(okButton)
@@ -78,8 +88,13 @@ struct RetroDemo {
         // Examples: Label + checkbox
         let matchCaseBox = TCheckBox(frame: Rect(x: 3, y: 3, width: 30, height: 1), title: "Match case", isChecked: false)
         let matchCaseLabel = TLabel(frame: Rect(x: 3, y: 2, width: 30, height: 1), text: "~Match case:", target: matchCaseBox)
+        let findLabel = TLabel(frame: Rect(x: 3, y: 5, width: 8, height: 1), text: "~Find:", target: nil)
+        let findInput = TInputLine(frame: Rect(x: 10, y: 5, width: 24, height: 1))
+        findLabel.target = findInput
         dialogWindow.addSubview(matchCaseLabel)
         dialogWindow.addSubview(matchCaseBox)
+        dialogWindow.addSubview(findLabel)
+        dialogWindow.addSubview(findInput)
         
         // Add buttons to dialog
         let findButton = TButton(frame: Rect(x: 5, y: 8, width: 12, height: 1), title: "Find") {
@@ -105,6 +120,16 @@ struct RetroDemo {
         optionsWindow.addSubview(radioDark)
         optionsWindow.addSubview(radioAuto)
         app.desktop.addSubview(optionsWindow)
+        
+        let statusLine = TStatusLine(
+            frame: Rect(x: 0, y: rows - 1, width: cols, height: 1),
+            items: [
+                TStatusItem(key: .f1, keyText: "F1", title: "Help"),
+                TStatusItem(key: .f2, keyText: "F2", title: "Save"),
+                TStatusItem(key: .f10, keyText: "F10", title: "Menu")
+            ]
+        )
+        app.desktop.addSubview(statusLine)
         
         app.run()
     }

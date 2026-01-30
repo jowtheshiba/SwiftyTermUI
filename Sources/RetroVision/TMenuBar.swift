@@ -232,9 +232,9 @@ public class TMenuBar: TView {
     public override func handleEvent(_ event: TEvent) {
         switch event {
         case .key(let key):
-            handleKeyEvent(key)
-            // Don't call super for key events - menu bar consumes them
-            return
+            if handleKeyEvent(key) {
+                return
+            }
         case .mouse(let mouseEvent):
             let handled = handleMouseEvent(mouseEvent)
             // If menu bar handled the event, don't pass it to super
@@ -368,18 +368,18 @@ public class TMenuBar: TView {
     }
     
     @MainActor
-    private func handleKeyEvent(_ key: Key) {
+    private func handleKeyEvent(_ key: Key) -> Bool {
         // F10 to activate menu bar
         if key == .f10 && !isMenuOpen {
             isMenuOpen = true
             selectedMenuIndex = 0
             selectedItemIndex = firstSelectableIndex(in: menus[0].items)
             isSubmenuOpen = false
-            return
+            return true
         }
         
         if !isMenuOpen {
-            return
+            return false
         }
         
         switch key {
@@ -389,7 +389,7 @@ public class TMenuBar: TView {
             } else {
                 isMenuOpen = false
             }
-            
+            return true
         case .left:
             if isSubmenuOpen {
                 isSubmenuOpen = false
@@ -397,15 +397,15 @@ public class TMenuBar: TView {
                 selectedMenuIndex = (selectedMenuIndex - 1 + menus.count) % menus.count
                 selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
             }
-            
+            return true
         case .right:
             if openSubmenuIfAvailable() {
-                break
+                return true
             }
             selectedMenuIndex = (selectedMenuIndex + 1) % menus.count
             selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
             isSubmenuOpen = false
-            
+            return true
         case .up:
             if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
                 selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: -1)
@@ -414,7 +414,7 @@ public class TMenuBar: TView {
                 selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: -1)
                 isSubmenuOpen = false
             }
-            
+            return true
         case .down:
             if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
                 selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: 1)
@@ -423,7 +423,7 @@ public class TMenuBar: TView {
                 selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: 1)
                 isSubmenuOpen = false
             }
-            
+            return true
         case .enter:
             if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
                 let item = submenuItems[selectedSubmenuItemIndex]
@@ -442,9 +442,9 @@ public class TMenuBar: TView {
                     }
                 }
             }
-            
+            return true
         default:
-            break
+            return true
         }
     }
     
