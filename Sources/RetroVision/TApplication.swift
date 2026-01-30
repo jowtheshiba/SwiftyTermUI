@@ -141,20 +141,7 @@ open class TApplication {
             
             // Only send to desktop if menu bar didn't handle it and mouse is not in menu bar row
             if !menuBarHandled && !isInMenuBarArea {
-                // Adjust mouse coordinates to account for menu bar if present
-                var adjustedMouseEvent = mouseEvent
-                if let menuBar = menuBar, menuBar.isVisible {
-                    let menuBarHeight = menuBar.frame.height
-                    let adjustedPosition = Point(x: mouseEvent.position.x, y: mouseEvent.position.y - menuBarHeight)
-                    adjustedMouseEvent = TEvent.MouseEvent(
-                        position: adjustedPosition,
-                        button: mouseEvent.button,
-                        action: mouseEvent.action,
-                        clickCount: mouseEvent.clickCount,
-                        modifiers: mouseEvent.modifiers
-                    )
-                }
-                desktop.handleEvent(.mouse(adjustedMouseEvent)) // Use adjusted coordinates for desktop
+                desktop.handleEvent(.mouse(mouseEvent))
             }
             
         case .terminalResize:
