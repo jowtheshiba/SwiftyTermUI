@@ -5,6 +5,8 @@ public class TDesktop: TView {
     private let backgroundChar: Character
     private let backgroundAttr: TextAttributes
     private var cursorPosition: Point
+    private var previousCursorPosition: Point
+    private var cellUnderCursor: Cell?
     private var cursorVisible: Bool = true
     private weak var draggingWindow: TWindow?
     private var dragOffset: Point = Point(x: 0, y: 0)
@@ -13,7 +15,9 @@ public class TDesktop: TView {
     public init(frame: Rect, backgroundChar: Character = "░", backgroundAttr: TextAttributes = TextAttributes()) {
         self.backgroundChar = backgroundChar
         self.backgroundAttr = backgroundAttr
-        self.cursorPosition = Point(x: frame.x + frame.width / 2, y: frame.y + frame.height / 2)
+        let initial = Point(x: frame.x + frame.width / 2, y: frame.y + frame.height / 2)
+        self.cursorPosition = initial
+        self.previousCursorPosition = initial
         super.init(frame: frame)
     }
     
@@ -23,19 +27,17 @@ public class TDesktop: TView {
         
         let tui = SwiftyTermUI.shared
         
-        // Draw background pattern
-        for y in 0..<frame.height {
-            for x in 0..<frame.width {
-                tui.drawChar(
-                    row: frame.y + y,
-                    column: frame.x + x,
-                    character: backgroundChar,
-                    attributes: backgroundAttr,
-                    foregroundColor: .black,
-                    backgroundColor: .white
-                )
-            }
-        }
+        // Фон одним fillRect вместо цикла по каждой ячейке — быстрее перерисовка
+        tui.fillRect(
+            row: frame.y,
+            column: frame.x,
+            width: frame.width,
+            height: frame.height,
+            character: backgroundChar,
+            attributes: backgroundAttr,
+            foregroundColor: .black,
+            backgroundColor: .white
+        )
         
         // Draw subviews (windows)
         super.draw()
@@ -54,9 +56,48 @@ public class TDesktop: TView {
         guard withinX && withinY else { return }
         
         let tui = SwiftyTermUI.shared
+        // Save cell under cursor before drawing (for cursor-only redraw on move)
+        cellUnderCursor = tui.getCell(row: cursorPosition.y, column: cursorPosition.x)
         tui.drawChar(
             row: cursorPosition.y,
             column: cursorPosition.x,
+            character: "╳",
+            attributes: [.bold],
+            foregroundColor: .black,
+            backgroundColor: .brightWhite
+        )
+        previousCursorPosition = cursorPosition
+    }
+    
+    /// Updates only the mouse cursor on screen without full redraw (Turbo Vision style).
+    /// Restores the cell at old position, draws cursor at new position; refresh() still needed after.
+    @MainActor
+    public func updateCursorOnly(globalPosition: Point) {
+        guard cursorVisible, frame.width > 0, frame.height > 0 else { return }
+        
+        let newPos = clampToDesktop(globalPosition)
+        if newPos.x == cursorPosition.x && newPos.y == cursorPosition.y { return }
+        
+        let tui = SwiftyTermUI.shared
+        let oldPos = cursorPosition
+        
+        // Restore cell under previous cursor position
+        if let cell = cellUnderCursor {
+            tui.drawCell(row: oldPos.y, column: oldPos.x, cell: cell)
+        }
+        
+        cursorPosition = newPos
+        previousCursorPosition = newPos
+        
+        let withinX = newPos.x >= frame.x && newPos.x < frame.x + frame.width
+        let withinY = newPos.y >= frame.y && newPos.y < frame.y + frame.height
+        guard withinX && withinY else { return }
+        
+        // Read cell at new position, then draw cursor on top
+        cellUnderCursor = tui.getCell(row: newPos.y, column: newPos.x)
+        tui.drawChar(
+            row: newPos.y,
+            column: newPos.x,
             character: "╳",
             attributes: [.bold],
             foregroundColor: .black,

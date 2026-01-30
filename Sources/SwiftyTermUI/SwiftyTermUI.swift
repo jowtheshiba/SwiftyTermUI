@@ -24,7 +24,6 @@ public final class SwiftyTermUI {
         inputHandler = InputHandler()
     }
 
-    /// Initializes TUI session
     public func initialize() throws {
         lock.lock()
         defer { lock.unlock() }
@@ -34,7 +33,6 @@ public final class SwiftyTermUI {
         try terminal.initialize()
         isInitialized = true
 
-        // Subscribe to terminal resize events
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleTerminalResize),
@@ -43,7 +41,6 @@ public final class SwiftyTermUI {
         )
     }
 
-    /// Terminates TUI session and cleans up resources
     public func shutdown() {
         lock.lock()
         defer { lock.unlock() }
@@ -56,9 +53,6 @@ public final class SwiftyTermUI {
         isInitialized = false
     }
 
-    // MARK: - Drawing
-
-    /// Outputs character at position (y, x)
     public func addChar(row: Int, column: Int, character: Character, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -77,7 +71,14 @@ public final class SwiftyTermUI {
         addChar(row: row, column: column, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Outputs text at position (y, x)
+    public func getCell(row: Int, column: Int) -> Cell {
+        screenBuffer.getCell(row: row, column: column)
+    }
+
+    public func drawCell(row: Int, column: Int, cell: Cell) {
+        addChar(row: row, column: column, character: cell.character, attributes: cell.attributes, foregroundColor: cell.foregroundColor, backgroundColor: cell.backgroundColor)
+    }
+
     public func addString(row: Int, column: Int, text: String, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -96,7 +97,6 @@ public final class SwiftyTermUI {
         addString(row: row, column: column, text: text, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Draws a box (rectangle) from the given character
     public func addBox(row: Int, column: Int, width: Int, height: Int, character: Character = " ", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -117,7 +117,6 @@ public final class SwiftyTermUI {
     
     // MARK: - Drawing Utilities
     
-    /// Draws a line
     public func drawLine(fromRow: Int, fromColumn: Int, toRow: Int, toColumn: Int, character: Character = "─", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -125,7 +124,6 @@ public final class SwiftyTermUI {
         DrawingUtils.drawLine(buffer: screenBuffer, fromRow: fromRow, fromColumn: fromColumn, toRow: toRow, toColumn: toColumn, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Draws a rectangle (outline only)
     public func drawRect(row: Int, column: Int, width: Int, height: Int, character: Character = "█", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -133,7 +131,6 @@ public final class SwiftyTermUI {
         DrawingUtils.drawRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Draws a filled rectangle
     public func fillRect(row: Int, column: Int, width: Int, height: Int, character: Character = " ", attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -141,13 +138,11 @@ public final class SwiftyTermUI {
         DrawingUtils.fillRect(buffer: screenBuffer, row: row, column: column, width: width, height: height, character: character, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
     
-    /// Outputs centered text
     public func drawCenteredString(row: Int, width: Int, text: String, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {
         let (centeredText, startCol) = DrawingUtils.centerText(text, width: width)
         drawString(row: row, column: startCol, text: centeredText, attributes: attributes, foregroundColor: foregroundColor, backgroundColor: backgroundColor)
     }
 
-    /// Clears screen area
     public func clearArea(row: Int, column: Int, width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -155,7 +150,6 @@ public final class SwiftyTermUI {
         screenBuffer.clearArea(row: row, column: column, width: width, height: height)
     }
 
-    /// Clears entire screen
     public func clear() {
         lock.lock()
         defer { lock.unlock() }
@@ -165,7 +159,6 @@ public final class SwiftyTermUI {
 
     // MARK: - Rendering
 
-    /// Refreshes screen - sends ANSI commands for output with optimization
     public func refresh() throws {
         lock.lock()
         defer { lock.unlock() }
@@ -182,23 +175,18 @@ public final class SwiftyTermUI {
 
     // MARK: - Input
 
-    /// Reads next input event (non-blocking)
     public func readEvent() -> InputEvent? {
         inputHandler.readEvent()
     }
     
-    /// Gets all events in the queue
     public func pollEvents() -> [InputEvent] {
         inputHandler.pollEvents()
     }
     
-    /// Clears event queue
     public func clearEvents() {
         inputHandler.clearEvents()
     }
     
-    /// Polls all available mouse events with coalescing for smooth cursor tracking
-    /// Coalesces consecutive move events into single event with final position
     public func pollMouseEvents() -> [InputEvent] {
         inputHandler.pollMouseEvents()
     }
@@ -227,24 +215,20 @@ public final class SwiftyTermUI {
 
     // MARK: - Terminal Info
 
-    /// Gets current terminal size
     public func getTerminalSize() -> (columns: Int, rows: Int) {
         terminal.getTerminalSize()
     }
 
-    /// Gets terminal width in columns
     public var columns: Int {
         getTerminalSize().columns
     }
 
-    /// Gets terminal height in rows
     public var rows: Int {
         getTerminalSize().rows
     }
 
     // MARK: - Cursor
 
-    /// Sets cursor position
     public func setCursorPosition(row: Int, column: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -257,7 +241,6 @@ public final class SwiftyTermUI {
         setCursorPosition(row: row, column: column)
     }
 
-    /// Gets current cursor position
     public func getCursorPosition() -> (row: Int, column: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -265,7 +248,6 @@ public final class SwiftyTermUI {
         return (cursorY, cursorX)
     }
     
-    /// Shows cursor
     public func showCursor() {
         lock.lock()
         defer { lock.unlock() }
@@ -274,7 +256,6 @@ public final class SwiftyTermUI {
         terminal.writeToTerminal("\u{1B}[?25h")
     }
     
-    /// Hides cursor
     public func hideCursor() {
         lock.lock()
         defer { lock.unlock() }
@@ -283,7 +264,6 @@ public final class SwiftyTermUI {
         terminal.writeToTerminal("\u{1B}[?25l")
     }
     
-    /// Whether cursor is visible
     public var isCursorVisible: Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -293,12 +273,10 @@ public final class SwiftyTermUI {
 
     // MARK: - Window/Panel Management
     
-    /// Creates a new window
     public func createWindow(x: Int, y: Int, width: Int, height: Int, hasBorder: Bool = false, borderStyle: Window.BorderStyle = .single) -> Window {
         Window(x: x, y: y, width: width, height: height, hasBorder: hasBorder, borderStyle: borderStyle)
     }
     
-    /// Adds window to panels
     public func addPanel(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -306,7 +284,6 @@ public final class SwiftyTermUI {
         panelManager.addPanel(window)
     }
     
-    /// Removes window from panels
     public func removePanel(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -314,7 +291,6 @@ public final class SwiftyTermUI {
         panelManager.removePanel(window)
     }
     
-    /// Brings window to front
     public func bringToFront(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -322,7 +298,6 @@ public final class SwiftyTermUI {
         panelManager.bringToFront(window)
     }
     
-    /// Sends window to back
     public func sendToBack(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -330,7 +305,6 @@ public final class SwiftyTermUI {
         panelManager.sendToBack(window)
     }
     
-    /// Hides window
     public func hideWindow(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -338,7 +312,6 @@ public final class SwiftyTermUI {
         panelManager.hide(window)
     }
     
-    /// Shows window
     public func showWindow(_ window: Window) {
         lock.lock()
         defer { lock.unlock() }
@@ -346,17 +319,14 @@ public final class SwiftyTermUI {
         panelManager.show(window)
     }
     
-    /// Gets all windows
     public var allWindows: [Window] {
         panelManager.allPanels
     }
     
-    /// Gets visible windows
     public var visibleWindows: [Window] {
         panelManager.visiblePanels
     }
 
-    /// Clears the render cache (call this after changing theme colors or attributes)
     public func clearRenderCache() {
         lock.lock()
         defer { lock.unlock() }
@@ -364,7 +334,6 @@ public final class SwiftyTermUI {
         renderOptimizer.clearCache()
     }
 
-    /// Gets render optimizer statistics for monitoring performance
     public func getRenderStatistics() -> OptimizerStatistics {
         lock.lock()
         defer { lock.unlock() }
@@ -372,7 +341,6 @@ public final class SwiftyTermUI {
         return renderOptimizer.getStatistics()
     }
 
-    /// Flushes any buffered terminal commands immediately
     public func flushOutput() {
         lock.lock()
         defer { lock.unlock() }
@@ -390,7 +358,6 @@ public final class SwiftyTermUI {
         let (newWidth, newHeight) = terminal.getTerminalSize()
         screenBuffer.resize(width: newWidth, height: newHeight)
 
-        // Try to refresh the screen with optimization
         panelManager.renderToBuffer(screenBuffer)
         let commands = renderOptimizer.generateOptimizedRenderCommands(buffer: screenBuffer)
         terminal.writeToTerminal(commands)

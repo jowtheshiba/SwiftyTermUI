@@ -152,14 +152,14 @@ public final class InputHandler: NSObject {
 
         // Special handling for standalone ESC
         // If we have an ESC in the buffer and no more data is coming immediately,
-        // treat it as a standalone ESC key.
+        // treat it as a standalone ESC key. Use 0ms poll to avoid blocking the main loop
+        // (blocking caused freeze when typing and cursor lag).
         if buffer == "\u{1B}" {
             var fds = [pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)]
-            // Wait up to 10ms for more data
-            let result = poll(&fds, 1, 10)
+            let result = poll(&fds, 1, 0)
             
             if result == 0 {
-                // Timeout, assume standalone ESC
+                // No more data available, assume standalone ESC
                 buffer.removeAll()
                 return .keyPress(.escape)
             }

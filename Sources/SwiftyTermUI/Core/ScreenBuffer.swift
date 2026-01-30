@@ -1,13 +1,12 @@
 import Foundation
 
-/// Represents a single character on screen with its attributes
-struct Cell: Equatable {
-    var character: Character
-    var attributes: TextAttributes
-    var foregroundColor: Color
-    var backgroundColor: Color
+public struct Cell: Equatable {
+    public var character: Character
+    public var attributes: TextAttributes
+    public var foregroundColor: Color
+    public var backgroundColor: Color
 
-    static func empty() -> Cell {
+    public static func empty() -> Cell {
         Cell(
             character: " ",
             attributes: TextAttributes(),
@@ -17,7 +16,6 @@ struct Cell: Equatable {
     }
 }
 
-/// Screen buffer with optimized rendering support
 public final class ScreenBuffer {
     private var current: [[Cell]]
     private var previous: [[Cell]]
@@ -35,7 +33,6 @@ public final class ScreenBuffer {
         self.previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
-    /// Sets a character at position (y, x) with attributes
     func setCell(row: Int, column: Int, character: Character, attributes: TextAttributes = TextAttributes(), foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -52,7 +49,6 @@ public final class ScreenBuffer {
         )
     }
 
-    /// Sets a text string at position (y, x) with attributes
     func setString(row: Int, column: Int, text: String, attributes: TextAttributes = TextAttributes(), foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
@@ -73,7 +69,6 @@ public final class ScreenBuffer {
         }
     }
 
-    /// Clears an area
     func clearArea(row: Int, column: Int, width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -85,7 +80,6 @@ public final class ScreenBuffer {
         }
     }
 
-    /// Clears the entire buffer
     func clear() {
         lock.lock()
         defer { lock.unlock() }
@@ -93,7 +87,6 @@ public final class ScreenBuffer {
         current = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
-    /// Generates ANSI commands only for changed regions
     func generateRenderCommands() -> String {
         lock.lock()
         defer { lock.unlock() }
@@ -146,12 +139,10 @@ public final class ScreenBuffer {
         return commands
     }
 
-    /// Checks if a position is within buffer bounds
     private func isValidPosition(row: Int, column: Int) -> Bool {
         row >= 0 && row < height && column >= 0 && column < width
     }
 
-    /// Resizes the buffer
     func resize(width: Int, height: Int) {
         lock.lock()
         defer { lock.unlock() }
@@ -162,8 +153,7 @@ public final class ScreenBuffer {
         previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
-    /// Gets a cell at position (row, column) for optimization purposes
-    func getCell(row: Int, column: Int) -> Cell {
+    public func getCell(row: Int, column: Int) -> Cell {
         lock.lock()
         defer { lock.unlock() }
 
@@ -173,7 +163,6 @@ public final class ScreenBuffer {
         return current[row][column]
     }
 
-    /// Gets the previous cell state (before last render)
     func getPreviousCell(row: Int, column: Int) -> Cell {
         lock.lock()
         defer { lock.unlock() }

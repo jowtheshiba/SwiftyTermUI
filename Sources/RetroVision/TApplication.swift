@@ -9,13 +9,8 @@ open class TApplication {
 
     private var isRunning = false
     
-    public init() {
-        // We can't access actor-isolated state in init easily without being isolated ourselves
-        // Defer initialization of desktop to run() or make init async?
-        // For simplicity, let's make TApplication @MainActor
-    }
+    public init() {}
     
-    // Lazy init to avoid actor issues in init
     private lazy var _desktop: TDesktop = {
         let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()
         return TDesktop(frame: Rect(x: 0, y: 0, width: cols, height: rows))
@@ -23,7 +18,6 @@ open class TApplication {
     
     public var menuBar: TMenuBar? {
         didSet {
-            // Update desktop menu bar height so cursor doesn't go under it
             if let menuBar = menuBar {
                 desktop.menuBarHeight = menuBar.frame.height
             } else {
@@ -49,45 +43,34 @@ open class TApplication {
             
             isRunning = true
             
-            // Initial draw
             redraw()
             
             while isRunning {
                 var hasEvents = false
                 var needsRedraw = false
                 
-                // Process events - redraw immediately after mouse events for responsive cursor
-                for _ in 0..<20 {
+                for _ in 0..<64 {
                     if let event = SwiftyTermUI.shared.readEvent() {
                         hasEvents = true
-                        handleLowLevelEvent(event)
-                        
-                        // Mouse events need immediate redraw for responsive cursor
-                        if case .mouse = event {
+                        handleLowLevelEvent(event, needsFullRedraw: &needsRedraw)
+                        if needsRedraw {
                             redraw()
-                        } else {
-                            needsRedraw = true
+                            needsRedraw = false
+                            break
                         }
                     } else {
-                        break // No more events available
+                        break
                     }
                 }
                 
-                // Redraw for keyboard events
-                if needsRedraw {
-                    redraw()
-                }
-                
-                // Very small sleep only when idle to prevent CPU spinning
                 if !hasEvents {
-                    Thread.sleep(forTimeInterval: 0.001) // 1ms when idle
+                    Thread.sleep(forTimeInterval: 0.001)
                 }
             }
         } catch {
         }
     }
     
-    /// Checks if event is a mouse move or drag event (needs immediate redraw)
     private func isMouseMoveEvent(_ event: InputEvent) -> Bool {
         if case .mouse(let mouse) = event {
             return mouse.action == .move || mouse.action == .drag
@@ -95,7 +78,6 @@ open class TApplication {
         return false
     }
     
-    /// Checks if event is a mouse click that might need immediate redraw (e.g., menu bar clicks)
     private func isMouseClickEvent(_ event: InputEvent) -> Bool {
         if case .mouse(let mouse) = event {
             return mouse.action == .down || mouse.action == .up
@@ -104,7 +86,7 @@ open class TApplication {
     }
     
     @MainActor
-    private func handleLowLevelEvent(_ event: InputEvent) {
+    private func handleLowLevelEvent(_ event: InputEvent, needsFullRedraw: inout Bool) {
         switch event {
         case .keyPress(let key):
             if key == .ctrl("c") {
@@ -112,37 +94,38 @@ open class TApplication {
                 return
             }
             
-            // Convert to TEvent
             let tEvent = TEvent.key(key)
-            
-            // Pass event to components
-            // 1. Menu Bar (if it handles it)
             if let menuBar = menuBar {
                 menuBar.handleEvent(tEvent)
             }
             
-            // 2. Desktop (Windows)
             desktop.handleEvent(tEvent)
+            needsFullRedraw = true
             
         case .mouse(let mouse):
             let mouseEvent = convertMouseEvent(mouse)
-            desktop.updateCursorPosition(globalPosition: mouseEvent.position)
+            let isMoveOnly = mouse.action == .move  // только движение без кнопки — курсор-only
             
-            // Check if mouse is in menu bar area (y == 0) or potentially in dropdown
-            // Menu bar is always at y=0, dropdown appears below it
+            if isMoveOnly {
+                desktop.updateCursorOnly(globalPosition: mouseEvent.position)
+            } else {
+                desktop.updateCursorPosition(globalPosition: mouseEvent.position)
+                needsFullRedraw = true
+            }
+            
             let isInMenuBarArea = mouseEvent.position.y == 0
-            let mightBeInDropdown = mouseEvent.position.y > 0 && mouseEvent.position.y < 20 // Dropdowns are typically < 20 rows
             
-            // First, always try menu bar if mouse is in menu bar area or might be in dropdown
             var menuBarHandled = false
-            if let menuBar = menuBar, menuBar.isVisible && (isInMenuBarArea || mightBeInDropdown) {
-                // Menu bar's handleMouseEvent returns true if it handled the event
+            if let menuBar = menuBar, menuBar.isVisible && isInMenuBarArea {
                 menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
             }
             
-            // Only send to desktop if menu bar didn't handle it and mouse is not in menu bar row
-            if !menuBarHandled && !isInMenuBarArea {
+            if !menuBarHandled {
                 desktop.handleEvent(.mouse(mouseEvent))
+            }
+            
+            if isMoveOnly {
+                try? SwiftyTermUI.shared.refresh()
             }
             
         case .terminalResize:
@@ -156,9 +139,6 @@ open class TApplication {
     }
     
     private func convertMouseEvent(_ event: InputMouseEvent) -> TEvent.MouseEvent {
-        // Terminal sends coordinates in SGR format: \u{1B}[<button;column;rowM
-        // where column is x (horizontal) and row is y (vertical)
-        // InputMouseEvent stores: column (x) and row (y)
         let position = Point(x: event.column, y: event.row)
         return TEvent.MouseEvent(
             position: position,
@@ -201,7 +181,6 @@ open class TApplication {
     public func redraw() {
         desktop.draw()
         menuBar?.draw()
-        // Draw cursor after menu bar so it appears on top
         desktop.drawCursor()
         try? SwiftyTermUI.shared.refresh()
     }

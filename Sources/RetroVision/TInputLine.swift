@@ -30,24 +30,27 @@ public class TInputLine: TView {
         
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
+        let drawWidth = max(1, frame.width)
+        let drawHeight = max(1, frame.height)
         
-        let fg: Color = .black
-        let bg: Color = .white
+        // Input field: fixed width, blue background (Turbo Vision style)
+        let fg: Color = .white
+        let bg: Color = .blue
         
         tui.fillRect(
             row: origin.y,
             column: origin.x,
-            width: frame.width,
-            height: frame.height,
+            width: drawWidth,
+            height: drawHeight,
             character: " ",
             attributes: [],
             foregroundColor: fg,
             backgroundColor: bg
         )
         
-        let row = origin.y + (frame.height - 1) / 2
+        let row = origin.y + (drawHeight - 1) / 2
         let displayText = isPassword ? String(repeating: "*", count: text.count) : text
-        let visible = visibleSlice(text: displayText, width: frame.width)
+        let visible = visibleSlice(text: displayText, width: drawWidth)
         tui.drawString(
             row: row,
             column: origin.x,
@@ -58,13 +61,13 @@ public class TInputLine: TView {
         )
         
         if isFocused {
-            let cursorColumn = origin.x + max(0, min(frame.width - 1, cursorPosition - scrollOffset))
+            let cursorColumn = origin.x + max(0, min(drawWidth - 1, cursorPosition - scrollOffset))
             tui.drawChar(
                 row: row,
                 column: cursorColumn,
                 character: "▌",
                 attributes: [],
-                foregroundColor: .blue,
+                foregroundColor: .brightWhite,
                 backgroundColor: bg
             )
         }
@@ -81,9 +84,10 @@ public class TInputLine: TView {
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) {
         guard event.action == .down, event.button == .left else { return }
-        guard bounds.contains(event.position) else { return }
+        let localPos = globalToLocal(event.position)
+        guard bounds.contains(localPos) else { return }
         RetroTextUtils.focus(view: self)
-        let clickIndex = max(0, min(frame.width - 1, event.position.x))
+        let clickIndex = max(0, min(max(1, frame.width) - 1, localPos.x))
         cursorPosition = min(text.count, scrollOffset + clickIndex)
         clampCursor()
     }
