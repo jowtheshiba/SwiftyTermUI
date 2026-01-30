@@ -113,6 +113,16 @@ open class TView {
         return bounds.contains(localPoint)
     }
     
+    /// Returns the focused view in this subtree, or nil if none
+    @MainActor
+    open func findFocusedView() -> TView? {
+        if isFocused { return self }
+        for view in subviews {
+            if let found = view.findFocusedView() { return found }
+        }
+        return nil
+    }
+    
     /// Brings a subview to the front (end of the array == front)
     public func bringSubviewToFront(_ view: TView) {
         guard let index = subviews.firstIndex(where: { $0 === view }) else { return }

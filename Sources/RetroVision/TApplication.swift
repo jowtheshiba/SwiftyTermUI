@@ -100,7 +100,14 @@ open class TApplication {
             }
             
             desktop.handleEvent(tEvent)
-            needsFullRedraw = true
+            
+            if let focused = desktop.findFocusedView(), focused is TInputLine {
+                needsFullRedraw = false
+                focused.draw()
+                try? SwiftyTermUI.shared.refresh()
+            } else {
+                needsFullRedraw = true
+            }
             
         case .mouse(let mouse):
             let mouseEvent = convertMouseEvent(mouse)
