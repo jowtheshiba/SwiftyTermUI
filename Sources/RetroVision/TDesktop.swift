@@ -64,6 +64,11 @@ public class TDesktop: TView {
         )
     }
     
+    @MainActor
+    public func updateCursorPosition(globalPosition: Point) {
+        cursorPosition = clampToDesktop(globalPosition)
+    }
+    
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         cursorPosition = clampToDesktop(event.position)
         

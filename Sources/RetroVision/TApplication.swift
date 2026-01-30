@@ -126,6 +126,7 @@ open class TApplication {
             
         case .mouse(let mouse):
             let mouseEvent = convertMouseEvent(mouse)
+            desktop.updateCursorPosition(globalPosition: mouseEvent.position)
             
             // Check if mouse is in menu bar area (y == 0) or potentially in dropdown
             // Menu bar is always at y=0, dropdown appears below it
