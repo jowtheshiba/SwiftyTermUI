@@ -128,7 +128,7 @@ public class TMenuBar: TView {
         tui.fillRect(
             row: dropdownLayout.y + 1,
             column: dropdownLayout.x + 1,
-            width: dropdownLayout.width,
+            width: dropdownLayout.width + 1,
             height: dropdownLayout.height,
             character: " ",
             attributes: [],
@@ -533,7 +533,7 @@ public class TMenuBar: TView {
         tui.fillRect(
             row: layout.y + 1,
             column: layout.x + 1,
-            width: layout.width,
+            width: layout.width + 1,
             height: layout.height,
             character: " ",
             attributes: [],

@@ -51,7 +51,7 @@ public class TWindow: TView {
         tui.fillRect(
             row: globalPos.y + 1,
             column: globalPos.x + 1,
-            width: frame.width,
+            width: frame.width + 1,
             height: frame.height,
             character: " ",
             attributes: [],
