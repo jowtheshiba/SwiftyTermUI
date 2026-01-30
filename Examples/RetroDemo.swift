@@ -29,11 +29,15 @@ struct RetroDemo {
             TMenuItem(title: "Clear", action: {})
         ])
         
+        let arrangeSubmenu = [
+            TMenuItem(title: "Tile", action: {}),
+            TMenuItem(title: "Cascade", action: {})
+        ]
+        
         let windowMenu = TMenu(title: "Window", items: [
             TMenuItem(title: "Size/Move", action: {}, shortcut: "Ctrl+F5"),
             TMenuItem(title: "Zoom", action: {}, shortcut: "F5"),
-            TMenuItem(title: "Tile", action: {}),
-            TMenuItem(title: "Cascade", action: {}),
+            TMenuItem(title: "Arrange", submenu: arrangeSubmenu),
             TMenuItem.separator,
             TMenuItem(title: "Next", action: {}, shortcut: "F6"),
             TMenuItem(title: "Previous", action: {}, shortcut: "Shift+F6"),

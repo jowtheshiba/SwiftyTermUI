@@ -4,12 +4,22 @@ public struct TMenuItem {
     public var title: String
     public var action: (() -> Void)?
     public var shortcut: String?
+    public var submenu: [TMenuItem]?
     public var isSeparator: Bool
     
     public init(title: String, action: (() -> Void)? = nil, shortcut: String? = nil) {
         self.title = title
         self.action = action
         self.shortcut = shortcut
+        self.submenu = nil
+        self.isSeparator = false
+    }
+    
+    public init(title: String, shortcut: String? = nil, submenu: [TMenuItem]) {
+        self.title = title
+        self.action = nil
+        self.shortcut = shortcut
+        self.submenu = submenu
         self.isSeparator = false
     }
     
@@ -37,6 +47,10 @@ public class TMenuBar: TView {
     private var isMenuOpen: Bool = false
     private var selectedMenuIndex: Int = 0
     private var selectedItemIndex: Int = 0
+    
+    // State for submenu
+    private var isSubmenuOpen: Bool = false
+    private var selectedSubmenuItemIndex: Int = 0
     
     public init(frame: Rect, menus: [TMenu]) {
         self.menus = menus
@@ -108,22 +122,14 @@ public class TMenuBar: TView {
         }
         let dropdownY = globalPos.y + 1
         
-        // Calculate dropdown width (longest item + padding)
-        var maxWidth = menu.title.count
-        for item in menu.items {
-            let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4
-            maxWidth = max(maxWidth, itemWidth)
-        }
-        maxWidth = max(maxWidth, 20) // Minimum width
-        
-        let dropdownHeight = menu.items.count + 2 // +2 for borders
+        let dropdownLayout = menuLayout(for: menu.items, originX: dropdownX, originY: dropdownY)
         
         // Draw shadow
         tui.fillRect(
-            row: dropdownY + 1,
-            column: dropdownX + 1,
-            width: maxWidth,
-            height: dropdownHeight,
+            row: dropdownLayout.y + 1,
+            column: dropdownLayout.x + 1,
+            width: dropdownLayout.width,
+            height: dropdownLayout.height,
             character: " ",
             attributes: [],
             foregroundColor: .black,
@@ -132,10 +138,10 @@ public class TMenuBar: TView {
         
         // Draw dropdown background
         tui.fillRect(
-            row: dropdownY,
-            column: dropdownX,
-            width: maxWidth,
-            height: dropdownHeight,
+            row: dropdownLayout.y,
+            column: dropdownLayout.x,
+            width: dropdownLayout.width,
+            height: dropdownLayout.height,
             character: " ",
             attributes: [],
             foregroundColor: .black,
@@ -145,9 +151,9 @@ public class TMenuBar: TView {
         // Draw border (single line for dropdown)
         // Top
         tui.drawString(
-            row: dropdownY,
-            column: dropdownX,
-            text: "┌" + String(repeating: "─", count: maxWidth - 2) + "┐",
+            row: dropdownLayout.y,
+            column: dropdownLayout.x,
+            text: "┌" + String(repeating: "─", count: dropdownLayout.width - 2) + "┐",
             attributes: [],
             foregroundColor: .black,
             backgroundColor: .white
@@ -155,24 +161,26 @@ public class TMenuBar: TView {
         
         // Bottom
         tui.drawString(
-            row: dropdownY + dropdownHeight - 1,
-            column: dropdownX,
-            text: "└" + String(repeating: "─", count: maxWidth - 2) + "┘",
+            row: dropdownLayout.y + dropdownLayout.height - 1,
+            column: dropdownLayout.x,
+            text: "└" + String(repeating: "─", count: dropdownLayout.width - 2) + "┘",
             attributes: [],
             foregroundColor: .black,
             backgroundColor: .white
         )
         
+        let selectedBg: Color = .indexed(22)
+        
         // Draw items
         for (index, item) in menu.items.enumerated() {
-            let itemY = dropdownY + 1 + index
+            let itemY = dropdownLayout.y + 1 + index
             
             if item.isSeparator {
                 // Draw separator
                 tui.drawString(
                     row: itemY,
-                    column: dropdownX,
-                    text: "├" + String(repeating: "─", count: maxWidth - 2) + "┤",
+                    column: dropdownLayout.x,
+                    text: "├" + String(repeating: "─", count: dropdownLayout.width - 2) + "┤",
                     attributes: [],
                     foregroundColor: .black,
                     backgroundColor: .white
@@ -181,7 +189,7 @@ public class TMenuBar: TView {
                 // Draw left border
                 tui.drawChar(
                     row: itemY,
-                    column: dropdownX,
+                    column: dropdownLayout.x,
                     character: "│",
                     attributes: [],
                     foregroundColor: .black,
@@ -191,7 +199,7 @@ public class TMenuBar: TView {
                 // Draw right border
                 tui.drawChar(
                     row: itemY,
-                    column: dropdownX + maxWidth - 1,
+                    column: dropdownLayout.x + dropdownLayout.width - 1,
                     character: "│",
                     attributes: [],
                     foregroundColor: .black,
@@ -200,27 +208,24 @@ public class TMenuBar: TView {
                 
                 let isSelected = index == selectedItemIndex
                 let itemFg: Color = isSelected ? .white : .black
-                let itemBg: Color = isSelected ? .green : .white
+                let itemBg: Color = isSelected ? selectedBg : .white
                 
-                // Draw item text
-                var itemText = " " + item.title
-                if let shortcut = item.shortcut {
-                    let padding = maxWidth - itemText.count - shortcut.count - 3
-                    itemText += String(repeating: " ", count: padding) + shortcut + " "
-                } else {
-                    let padding = maxWidth - itemText.count - 2
-                    itemText += String(repeating: " ", count: padding) + " "
-                }
+                let itemText = buildItemLine(item, contentWidth: dropdownLayout.width - 2)
                 
                 tui.drawString(
                     row: itemY,
-                    column: dropdownX + 1,
+                    column: dropdownLayout.x + 1,
                     text: itemText,
                     attributes: [],
                     foregroundColor: itemFg,
                     backgroundColor: itemBg
                 )
             }
+        }
+        
+        if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
+            let submenuLayout = submenuLayout(for: submenuItems, parentLayout: dropdownLayout, parentIndex: selectedItemIndex)
+            drawSubmenu(submenuItems, layout: submenuLayout, selectedIndex: selectedSubmenuItemIndex)
         }
     }
     
@@ -259,31 +264,24 @@ public class TMenuBar: TView {
         
         // Also check if click might be in dropdown (if menu is open)
         var mightBeInDropdown = false
-        if isMenuOpen && event.position.y > 0 {
-            let globalPos = localToGlobal(Point(x: 0, y: 0))
-            var dropdownX = globalPos.x + 1
-            for i in 0..<selectedMenuIndex {
-                dropdownX += menus[i].title.count + 2
-            }
-            let dropdownY = globalPos.y + 1
-            let menu = menus[selectedMenuIndex]
-            
-            var maxWidth = menu.title.count
-            for item in menu.items {
-                let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4
-                maxWidth = max(maxWidth, itemWidth)
-            }
-            maxWidth = max(maxWidth, 20)
-            let dropdownHeight = menu.items.count + 2
-            
-            mightBeInDropdown = event.position.x >= dropdownX && event.position.x < dropdownX + maxWidth &&
-                                event.position.y >= dropdownY && event.position.y < dropdownY + dropdownHeight
+        if isMenuOpen && event.position.y > 0, let dropdownLayout = currentDropdownLayout() {
+            mightBeInDropdown = event.position.x >= dropdownLayout.x && event.position.x < dropdownLayout.x + dropdownLayout.width &&
+                                event.position.y >= dropdownLayout.y && event.position.y < dropdownLayout.y + dropdownLayout.height
         }
         
-        guard isInMenuBarRow || isInBounds || mightBeInDropdown else {
+        // Also check if click might be in submenu
+        var mightBeInSubmenu = false
+        if isSubmenuOpen, let submenuItems = currentSubmenuItems(), let dropdownLayout = currentDropdownLayout() {
+            let submenuLayout = submenuLayout(for: submenuItems, parentLayout: dropdownLayout, parentIndex: selectedItemIndex)
+            mightBeInSubmenu = event.position.x >= submenuLayout.x && event.position.x < submenuLayout.x + submenuLayout.width &&
+                               event.position.y >= submenuLayout.y && event.position.y < submenuLayout.y + submenuLayout.height
+        }
+        
+        guard isInMenuBarRow || isInBounds || mightBeInDropdown || mightBeInSubmenu else {
             // If menu is open and click is outside, close it
             if isMenuOpen {
                 isMenuOpen = false
+                isSubmenuOpen = false
                 return true // Event handled (menu closed)
             }
             return false // Event not handled by menu bar
@@ -292,35 +290,43 @@ public class TMenuBar: TView {
         // Handle clicks on menu items
         switch event.action {
         case .down where event.button == .left:
+            // If click is inside submenu, trigger submenu item
+            if isSubmenuOpen, let submenuItems = currentSubmenuItems(), let dropdownLayout = currentDropdownLayout() {
+                let submenuLayout = submenuLayout(for: submenuItems, parentLayout: dropdownLayout, parentIndex: selectedItemIndex)
+                if event.position.x >= submenuLayout.x && event.position.x < submenuLayout.x + submenuLayout.width &&
+                   event.position.y >= submenuLayout.y && event.position.y < submenuLayout.y + submenuLayout.height {
+                    let itemIndex = event.position.y - submenuLayout.y - 1
+                    if itemIndex >= 0 && itemIndex < submenuItems.count {
+                        let item = submenuItems[itemIndex]
+                        if !item.isSeparator {
+                            item.action?()
+                            isSubmenuOpen = false
+                            isMenuOpen = false
+                        }
+                    }
+                    return true
+                }
+            }
+            
             // First check if click is in dropdown (if menu is open)
-            if isMenuOpen {
-                let globalPos = localToGlobal(Point(x: 0, y: 0))
-                var dropdownX = globalPos.x + 1
-                for i in 0..<selectedMenuIndex {
-                    dropdownX += menus[i].title.count + 2
-                }
-                let dropdownY = globalPos.y + 1
-                let menu = menus[selectedMenuIndex]
-                
-                var maxWidth = menu.title.count
-                for item in menu.items {
-                    let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4
-                    maxWidth = max(maxWidth, itemWidth)
-                }
-                maxWidth = max(maxWidth, 20)
-                let dropdownHeight = menu.items.count + 2
-                
-                // Check if click is in dropdown area (using global coordinates)
-                if event.position.x >= dropdownX && event.position.x < dropdownX + maxWidth &&
-                   event.position.y >= dropdownY && event.position.y < dropdownY + dropdownHeight {
+            if isMenuOpen, let dropdownLayout = currentDropdownLayout() {
+                if event.position.x >= dropdownLayout.x && event.position.x < dropdownLayout.x + dropdownLayout.width &&
+                   event.position.y >= dropdownLayout.y && event.position.y < dropdownLayout.y + dropdownLayout.height {
                     
                     // Calculate which item was clicked
-                    let itemIndex = event.position.y - dropdownY - 1
+                    let itemIndex = event.position.y - dropdownLayout.y - 1
+                    let menu = menus[selectedMenuIndex]
                     if itemIndex >= 0 && itemIndex < menu.items.count {
                         let item = menu.items[itemIndex]
                         if !item.isSeparator {
-                            item.action?()
-                            isMenuOpen = false
+                            selectedItemIndex = itemIndex
+                            if let submenu = item.submenu, !submenu.isEmpty {
+                                openSubmenuIfAvailable()
+                            } else {
+                                item.action?()
+                                isSubmenuOpen = false
+                                isMenuOpen = false
+                            }
                         }
                     }
                     return true // Event handled
@@ -339,18 +345,13 @@ public class TMenuBar: TView {
                     if isMenuOpen && selectedMenuIndex == index {
                         // Same menu clicked again - close it
                         isMenuOpen = false
+                        isSubmenuOpen = false
                     } else {
                         // Open this menu
                         isMenuOpen = true
                         selectedMenuIndex = index
-                        selectedItemIndex = 0
-                        // Skip separators
-                        while selectedItemIndex < menu.items.count && menu.items[selectedItemIndex].isSeparator {
-                            selectedItemIndex += 1
-                        }
-                        if selectedItemIndex >= menu.items.count {
-                            selectedItemIndex = 0
-                        }
+                        selectedItemIndex = firstSelectableIndex(in: menu.items)
+                        isSubmenuOpen = false
                     }
                     return true // Event handled
                 }
@@ -366,12 +367,14 @@ public class TMenuBar: TView {
         return false // Event not handled
     }
     
+    @MainActor
     private func handleKeyEvent(_ key: Key) {
         // F10 to activate menu bar
         if key == .f10 && !isMenuOpen {
             isMenuOpen = true
             selectedMenuIndex = 0
-            selectedItemIndex = 0
+            selectedItemIndex = firstSelectableIndex(in: menus[0].items)
+            isSubmenuOpen = false
             return
         }
         
@@ -381,39 +384,290 @@ public class TMenuBar: TView {
         
         switch key {
         case .escape:
-            isMenuOpen = false
+            if isSubmenuOpen {
+                isSubmenuOpen = false
+            } else {
+                isMenuOpen = false
+            }
             
         case .left:
-            selectedMenuIndex = (selectedMenuIndex - 1 + menus.count) % menus.count
-            selectedItemIndex = 0
+            if isSubmenuOpen {
+                isSubmenuOpen = false
+            } else {
+                selectedMenuIndex = (selectedMenuIndex - 1 + menus.count) % menus.count
+                selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
+            }
             
         case .right:
+            if openSubmenuIfAvailable() {
+                break
+            }
             selectedMenuIndex = (selectedMenuIndex + 1) % menus.count
-            selectedItemIndex = 0
+            selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
+            isSubmenuOpen = false
             
         case .up:
-            let menu = menus[selectedMenuIndex]
-            repeat {
-                selectedItemIndex = (selectedItemIndex - 1 + menu.items.count) % menu.items.count
-            } while menu.items[selectedItemIndex].isSeparator
+            if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
+                selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: -1)
+            } else {
+                let menu = menus[selectedMenuIndex]
+                selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: -1)
+                isSubmenuOpen = false
+            }
             
         case .down:
-            let menu = menus[selectedMenuIndex]
-            repeat {
-                selectedItemIndex = (selectedItemIndex + 1) % menu.items.count
-            } while menu.items[selectedItemIndex].isSeparator
+            if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
+                selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: 1)
+            } else {
+                let menu = menus[selectedMenuIndex]
+                selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: 1)
+                isSubmenuOpen = false
+            }
             
         case .enter:
-            let menu = menus[selectedMenuIndex]
-            let item = menu.items[selectedItemIndex]
-            if !item.isSeparator {
-                item.action?()
-                isMenuOpen = false
+            if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
+                let item = submenuItems[selectedSubmenuItemIndex]
+                if !item.isSeparator {
+                    item.action?()
+                    isSubmenuOpen = false
+                    isMenuOpen = false
+                }
+            } else {
+                let menu = menus[selectedMenuIndex]
+                let item = menu.items[selectedItemIndex]
+                if !item.isSeparator {
+                    if !openSubmenuIfAvailable() {
+                        item.action?()
+                        isMenuOpen = false
+                    }
+                }
             }
             
         default:
             break
         }
+    }
+    
+    private struct MenuLayout {
+        let x: Int
+        let y: Int
+        let width: Int
+        let height: Int
+    }
+    
+    @MainActor
+    private func buildItemLine(_ item: TMenuItem, contentWidth: Int) -> String {
+        guard contentWidth > 0 else { return "" }
+        
+        var chars = Array(repeating: Character(" "), count: contentWidth)
+        let indicatorWidth = (item.submenu?.isEmpty == false) ? 1 : 0
+        let shortcut = item.shortcut ?? ""
+        let shortcutWidth = shortcut.count
+        let rightReserved = indicatorWidth + (shortcutWidth > 0 ? shortcutWidth + 1 : 0)
+        let titleAvailable = max(0, contentWidth - rightReserved - 1)
+        let titleText = String(item.title.prefix(titleAvailable))
+        
+        for (i, ch) in titleText.enumerated() {
+            let idx = 1 + i
+            if idx >= 0 && idx < contentWidth {
+                chars[idx] = ch
+            }
+        }
+        
+        if shortcutWidth > 0 {
+            let shortcutStart = max(0, contentWidth - indicatorWidth - shortcutWidth)
+            let spaceIndex = shortcutStart - 1
+            if spaceIndex >= 0 && spaceIndex < contentWidth {
+                chars[spaceIndex] = " "
+            }
+            for (i, ch) in shortcut.enumerated() {
+                let idx = shortcutStart + i
+                if idx >= 0 && idx < contentWidth {
+                    chars[idx] = ch
+                }
+            }
+        }
+        
+        if indicatorWidth > 0, contentWidth > 0 {
+            chars[contentWidth - 1] = ">"
+        }
+        
+        return String(chars)
+    }
+    
+    @MainActor
+    private func menuLayout(for items: [TMenuItem], originX: Int, originY: Int) -> MenuLayout {
+        let (columns, rows) = SwiftyTermUI.shared.getTerminalSize()
+        var maxWidth = 20
+        for item in items {
+            let submenuExtra = (item.submenu?.isEmpty == false) ? 2 : 0
+            let itemWidth = item.title.count + (item.shortcut?.count ?? 0) + 4 + submenuExtra
+            maxWidth = max(maxWidth, itemWidth)
+        }
+        let availableWidth = max(4, columns - originX)
+        let width = max(4, min(maxWidth, availableWidth))
+        let height = items.count + 2
+        let maxY = max(0, rows - height)
+        let y = max(0, min(originY, maxY))
+        return MenuLayout(x: originX, y: y, width: width, height: height)
+    }
+    
+    @MainActor
+    private func submenuLayout(for items: [TMenuItem], parentLayout: MenuLayout, parentIndex: Int) -> MenuLayout {
+        var originX = parentLayout.x + parentLayout.width
+        let originY = parentLayout.y + parentIndex
+        let (columns, _) = SwiftyTermUI.shared.getTerminalSize()
+        var layout = menuLayout(for: items, originX: originX, originY: originY)
+        if originX + layout.width > columns {
+            originX = max(0, parentLayout.x - layout.width)
+            layout = menuLayout(for: items, originX: originX, originY: originY)
+        }
+        return layout
+    }
+    
+    @MainActor
+    private func drawSubmenu(_ items: [TMenuItem], layout: MenuLayout, selectedIndex: Int) {
+        let tui = SwiftyTermUI.shared
+        let selectedBg: Color = .indexed(22)
+        
+        tui.fillRect(
+            row: layout.y + 1,
+            column: layout.x + 1,
+            width: layout.width,
+            height: layout.height,
+            character: " ",
+            attributes: [],
+            foregroundColor: .black,
+            backgroundColor: .black
+        )
+        
+        tui.fillRect(
+            row: layout.y,
+            column: layout.x,
+            width: layout.width,
+            height: layout.height,
+            character: " ",
+            attributes: [],
+            foregroundColor: .black,
+            backgroundColor: .white
+        )
+        
+        tui.drawString(
+            row: layout.y,
+            column: layout.x,
+            text: "┌" + String(repeating: "─", count: layout.width - 2) + "┐",
+            attributes: [],
+            foregroundColor: .black,
+            backgroundColor: .white
+        )
+        tui.drawString(
+            row: layout.y + layout.height - 1,
+            column: layout.x,
+            text: "└" + String(repeating: "─", count: layout.width - 2) + "┘",
+            attributes: [],
+            foregroundColor: .black,
+            backgroundColor: .white
+        )
+        
+        for (index, item) in items.enumerated() {
+            let itemY = layout.y + 1 + index
+            if item.isSeparator {
+                tui.drawString(
+                    row: itemY,
+                    column: layout.x,
+                    text: "├" + String(repeating: "─", count: layout.width - 2) + "┤",
+                    attributes: [],
+                    foregroundColor: .black,
+                    backgroundColor: .white
+                )
+            } else {
+                tui.drawChar(
+                    row: itemY,
+                    column: layout.x,
+                    character: "│",
+                    attributes: [],
+                    foregroundColor: .black,
+                    backgroundColor: .white
+                )
+                tui.drawChar(
+                    row: itemY,
+                    column: layout.x + layout.width - 1,
+                    character: "│",
+                    attributes: [],
+                    foregroundColor: .black,
+                    backgroundColor: .white
+                )
+                
+                let isSelected = index == selectedIndex
+                let itemFg: Color = isSelected ? .white : .black
+                let itemBg: Color = isSelected ? selectedBg : .white
+                let itemText = buildItemLine(item, contentWidth: layout.width - 2)
+                
+                tui.drawString(
+                    row: itemY,
+                    column: layout.x + 1,
+                    text: itemText,
+                    attributes: [],
+                    foregroundColor: itemFg,
+                    backgroundColor: itemBg
+                )
+            }
+        }
+    }
+    
+    @MainActor
+    private func currentDropdownLayout() -> MenuLayout? {
+        guard isMenuOpen, selectedMenuIndex < menus.count else { return nil }
+        let globalPos = localToGlobal(Point(x: 0, y: 0))
+        var dropdownX = globalPos.x + 1
+        for i in 0..<selectedMenuIndex {
+            dropdownX += menus[i].title.count + 2
+        }
+        let dropdownY = globalPos.y + 1
+        return menuLayout(for: menus[selectedMenuIndex].items, originX: dropdownX, originY: dropdownY)
+    }
+    
+    @MainActor
+    private func currentSubmenuItems() -> [TMenuItem]? {
+        guard selectedMenuIndex < menus.count else { return nil }
+        let menu = menus[selectedMenuIndex]
+        guard selectedItemIndex >= 0 && selectedItemIndex < menu.items.count else { return nil }
+        return menu.items[selectedItemIndex].submenu
+    }
+    
+    @discardableResult
+    @MainActor
+    private func openSubmenuIfAvailable() -> Bool {
+        guard let submenuItems = currentSubmenuItems(), !submenuItems.isEmpty else {
+            isSubmenuOpen = false
+            return false
+        }
+        isSubmenuOpen = true
+        selectedSubmenuItemIndex = firstSelectableIndex(in: submenuItems)
+        return true
+    }
+    
+    @MainActor
+    private func firstSelectableIndex(in items: [TMenuItem]) -> Int {
+        for (index, item) in items.enumerated() {
+            if !item.isSeparator {
+                return index
+            }
+        }
+        return 0
+    }
+    
+    @MainActor
+    private func moveSelection(in items: [TMenuItem], from index: Int, direction: Int) -> Int {
+        guard !items.isEmpty else { return 0 }
+        var idx = index
+        for _ in 0..<items.count {
+            idx = (idx + direction + items.count) % items.count
+            if !items[idx].isSeparator {
+                return idx
+            }
+        }
+        return index
     }
 }
 
