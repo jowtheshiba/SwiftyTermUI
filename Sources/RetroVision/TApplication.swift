@@ -120,10 +120,8 @@ open class TApplication {
                 needsFullRedraw = true
             }
             
-            let isInMenuBarArea = mouseEvent.position.y == 0
-            
             var menuBarHandled = false
-            if let menuBar = menuBar, menuBar.isVisible && isInMenuBarArea {
+            if let menuBar = menuBar, menuBar.isVisible {
                 menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
             }
             

@@ -282,7 +282,7 @@ public class TMenuBar: TView {
             if isMenuOpen {
                 isMenuOpen = false
                 isSubmenuOpen = false
-                return true // Event handled (menu closed)
+                return false // Allow click to pass through after closing
             }
             return false // Event not handled by menu bar
         }
