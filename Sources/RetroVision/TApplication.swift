@@ -123,6 +123,9 @@ open class TApplication {
             var menuBarHandled = false
             if let menuBar = menuBar, menuBar.isVisible {
                 menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
+                if isMoveOnly && menuBarHandled {
+                    menuBar.draw()
+                }
             }
             
             if !menuBarHandled {

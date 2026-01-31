@@ -46,7 +46,7 @@ public class TMenuBar: TView {
     // State for dropdown
     private var isMenuOpen: Bool = false
     private var selectedMenuIndex: Int = 0
-    private var selectedItemIndex: Int = 0
+    private var selectedItemIndex: Int = -1
     
     // State for submenu
     private var isSubmenuOpen: Bool = false
@@ -251,6 +251,7 @@ public class TMenuBar: TView {
     @discardableResult
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         guard isVisible else { return false }
+        let wasSubmenuOpen = isSubmenuOpen
         
         // Menu bar is at (0, 0), so global coordinates should match local coordinates
         // But use globalToLocal to be safe in case menu bar is moved in the future
@@ -282,6 +283,7 @@ public class TMenuBar: TView {
             if isMenuOpen {
                 isMenuOpen = false
                 isSubmenuOpen = false
+                TApplication.shared.redraw()
                 return false // Allow click to pass through after closing
             }
             return false // Event not handled by menu bar
@@ -289,6 +291,80 @@ public class TMenuBar: TView {
         
         // Handle clicks on menu items
         switch event.action {
+        case .move, .drag:
+            // Hover in menu bar row: switch menus if already open
+            if isMenuOpen && isInMenuBarRow {
+                var currentX = 1
+                for (index, menu) in menus.enumerated() {
+                    let text = " \(menu.title) "
+                    let menuStartX = currentX
+                    let menuEndX = currentX + text.count
+                    if localPoint.x >= menuStartX && localPoint.x < menuEndX {
+                        if selectedMenuIndex != index {
+                            selectedMenuIndex = index
+                        selectedItemIndex = -1
+                            isSubmenuOpen = false
+                            TApplication.shared.redraw()
+                        }
+                        return true
+                    }
+                    currentX = menuEndX
+                }
+            }
+            
+            // Hover in dropdown: update selection and auto-open submenu if any
+            if isMenuOpen, let dropdownLayout = currentDropdownLayout() {
+                if event.position.x >= dropdownLayout.x && event.position.x < dropdownLayout.x + dropdownLayout.width &&
+                   event.position.y >= dropdownLayout.y && event.position.y < dropdownLayout.y + dropdownLayout.height {
+                    let itemIndex = event.position.y - dropdownLayout.y - 1
+                    let menu = menus[selectedMenuIndex]
+                    if itemIndex >= 0 && itemIndex < menu.items.count {
+                        let item = menu.items[itemIndex]
+                        if item.isSeparator {
+                            isSubmenuOpen = false
+                        } else {
+                            if selectedItemIndex != itemIndex {
+                                selectedItemIndex = itemIndex
+                            }
+                            if let submenu = item.submenu, !submenu.isEmpty {
+                                _ = openSubmenuIfAvailable()
+                            } else {
+                                isSubmenuOpen = false
+                            }
+                        }
+                        if wasSubmenuOpen && !isSubmenuOpen {
+                            TApplication.shared.redraw()
+                        }
+                        return true
+                    }
+                }
+            }
+            
+            // Hover in submenu: update submenu selection
+            if isSubmenuOpen, let submenuItems = currentSubmenuItems(), let dropdownLayout = currentDropdownLayout() {
+                let submenuLayout = submenuLayout(for: submenuItems, parentLayout: dropdownLayout, parentIndex: selectedItemIndex)
+                if event.position.x >= submenuLayout.x && event.position.x < submenuLayout.x + submenuLayout.width &&
+                   event.position.y >= submenuLayout.y && event.position.y < submenuLayout.y + submenuLayout.height {
+                    let itemIndex = event.position.y - submenuLayout.y - 1
+                    if itemIndex >= 0 && itemIndex < submenuItems.count {
+                        let item = submenuItems[itemIndex]
+                        if !item.isSeparator {
+                            selectedSubmenuItemIndex = itemIndex
+                        }
+                        return true
+                    }
+                }
+            }
+            
+            // If hovering elsewhere while submenu is open, close it
+            if isMenuOpen && isSubmenuOpen && !mightBeInSubmenu {
+                isSubmenuOpen = false
+                if wasSubmenuOpen {
+                    TApplication.shared.redraw()
+                }
+                return true
+            }
+            return isMenuOpen
         case .down where event.button == .left:
             // If click is inside submenu, trigger submenu item
             if isSubmenuOpen, let submenuItems = currentSubmenuItems(), let dropdownLayout = currentDropdownLayout() {
@@ -350,7 +426,7 @@ public class TMenuBar: TView {
                         // Open this menu
                         isMenuOpen = true
                         selectedMenuIndex = index
-                        selectedItemIndex = firstSelectableIndex(in: menu.items)
+                        selectedItemIndex = -1
                         isSubmenuOpen = false
                     }
                     return true // Event handled
@@ -373,7 +449,7 @@ public class TMenuBar: TView {
         if key == .f10 && !isMenuOpen {
             isMenuOpen = true
             selectedMenuIndex = 0
-            selectedItemIndex = firstSelectableIndex(in: menus[0].items)
+            selectedItemIndex = -1
             isSubmenuOpen = false
             return true
         }
@@ -395,7 +471,7 @@ public class TMenuBar: TView {
                 isSubmenuOpen = false
             } else {
                 selectedMenuIndex = (selectedMenuIndex - 1 + menus.count) % menus.count
-                selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
+                selectedItemIndex = -1
             }
             return true
         case .right:
@@ -403,7 +479,7 @@ public class TMenuBar: TView {
                 return true
             }
             selectedMenuIndex = (selectedMenuIndex + 1) % menus.count
-            selectedItemIndex = firstSelectableIndex(in: menus[selectedMenuIndex].items)
+            selectedItemIndex = -1
             isSubmenuOpen = false
             return true
         case .up:
@@ -411,7 +487,8 @@ public class TMenuBar: TView {
                 selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: -1)
             } else {
                 let menu = menus[selectedMenuIndex]
-                selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: -1)
+                let startIndex = selectedItemIndex >= 0 ? selectedItemIndex : firstSelectableIndex(in: menu.items)
+                selectedItemIndex = moveSelection(in: menu.items, from: startIndex, direction: -1)
                 isSubmenuOpen = false
             }
             return true
@@ -420,7 +497,8 @@ public class TMenuBar: TView {
                 selectedSubmenuItemIndex = moveSelection(in: submenuItems, from: selectedSubmenuItemIndex, direction: 1)
             } else {
                 let menu = menus[selectedMenuIndex]
-                selectedItemIndex = moveSelection(in: menu.items, from: selectedItemIndex, direction: 1)
+                let startIndex = selectedItemIndex >= 0 ? selectedItemIndex : firstSelectableIndex(in: menu.items)
+                selectedItemIndex = moveSelection(in: menu.items, from: startIndex, direction: 1)
                 isSubmenuOpen = false
             }
             return true
@@ -434,6 +512,9 @@ public class TMenuBar: TView {
                 }
             } else {
                 let menu = menus[selectedMenuIndex]
+                if selectedItemIndex < 0 {
+                    selectedItemIndex = firstSelectableIndex(in: menu.items)
+                }
                 let item = menu.items[selectedItemIndex]
                 if !item.isSeparator {
                     if !openSubmenuIfAvailable() {
@@ -515,7 +596,7 @@ public class TMenuBar: TView {
     @MainActor
     private func submenuLayout(for items: [TMenuItem], parentLayout: MenuLayout, parentIndex: Int) -> MenuLayout {
         var originX = parentLayout.x + parentLayout.width
-        let originY = parentLayout.y + 1 + parentIndex
+        let originY = parentLayout.y + parentIndex
         let (columns, _) = SwiftyTermUI.shared.getTerminalSize()
         var layout = menuLayout(for: items, originX: originX, originY: originY)
         if originX + layout.width > columns {
@@ -638,6 +719,9 @@ public class TMenuBar: TView {
     @discardableResult
     @MainActor
     private func openSubmenuIfAvailable() -> Bool {
+        if selectedItemIndex < 0 {
+            return false
+        }
         guard let submenuItems = currentSubmenuItems(), !submenuItems.isEmpty else {
             isSubmenuOpen = false
             return false
