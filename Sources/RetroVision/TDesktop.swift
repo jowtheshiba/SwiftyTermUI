@@ -110,6 +110,7 @@ public class TDesktop: TView {
         cursorPosition = clampToDesktop(globalPosition)
     }
     
+    @MainActor
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         cursorPosition = clampToDesktop(event.position)
         
@@ -137,6 +138,7 @@ public class TDesktop: TView {
     
     // MARK: - Private
     
+    @MainActor
     private func handleMouseDown(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left else { return false }
         
@@ -156,12 +158,14 @@ public class TDesktop: TView {
         return false
     }
     
+    @MainActor
     private func handleMouseDrag(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left, let window = draggingWindow else { return false }
         move(window: window, to: event.position)
         return true
     }
     
+    @MainActor
     private func handleMouseUp(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left else { return false }
         let wasDragging = draggingWindow != nil
@@ -169,12 +173,14 @@ public class TDesktop: TView {
         return wasDragging
     }
     
+    @MainActor
     private func startDragging(window: TWindow, at position: Point) {
         draggingWindow = window
         let windowOrigin = window.globalFrame
         dragOffset = Point(x: position.x - windowOrigin.x, y: position.y - windowOrigin.y)
     }
     
+    @MainActor
     private func move(window: TWindow, to globalPoint: Point) {
         let targetX = globalPoint.x - dragOffset.x
         let targetY = globalPoint.y - dragOffset.y
@@ -187,17 +193,15 @@ public class TDesktop: TView {
         let clampedX = min(max(targetX, minX), maxX)
         let clampedY = min(max(targetY, minY), maxY)
         
-        let oldX = window.frame.x
-        let oldY = window.frame.y
         window.frame.x = clampedX - frame.x
         window.frame.y = clampedY - frame.y
         
     }
     
+    @MainActor
     private func focus(window: TWindow) {
-        for case let candidate as TWindow in subviews {
-            candidate.isFocused = (candidate === window)
-        }
+        clearFocus()
+        window.isFocused = true
     }
     
     private func topmostWindow(at point: Point) -> TWindow? {

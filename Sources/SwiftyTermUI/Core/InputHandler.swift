@@ -136,10 +136,13 @@ public final class InputHandler: NSObject {
             }
         }
 
-        // Try to recognize a mouse event first
-        if let mouseEvent = parseMouseSequence() {
-            let event = InputEvent.mouse(mouseEvent)
-            eventQueue.enqueue(event)
+        // Try to recognize mouse events first (coalesce move events)
+        let mouseEvents = parseAllMouseSequences()
+        if !mouseEvents.isEmpty {
+            let coalesced = coalesceMouseEvents(mouseEvents)
+            for event in coalesced {
+                eventQueue.enqueue(.mouse(event))
+            }
             return eventQueue.dequeue()
         }
         
@@ -209,35 +212,36 @@ public final class InputHandler: NSObject {
             return []
         }
         
-        // Coalesce consecutive move events - keep only the last position
-        var result: [InputEvent] = []
-        var lastMoveEvent: InputMouseEvent? = nil
-        
-        for event in mouseEvents {
-            if event.action == .move {
-                // Coalesce: just remember the last move position
-                lastMoveEvent = event
-            } else {
-                // Non-move event: flush any pending move first
-                if let move = lastMoveEvent {
-                    result.append(.mouse(move))
-                    lastMoveEvent = nil
-                }
-                result.append(.mouse(event))
-            }
-        }
-        
-        // Don't forget the last move event
-        if let move = lastMoveEvent {
-            result.append(.mouse(move))
-        }
-        
-        return result
+        return coalesceMouseEvents(mouseEvents).map { .mouse($0) }
     }
     
     /// Clears the event queue
     public func clearEvents() {
         eventQueue.clear()
+    }
+
+    /// Coalesces consecutive move events - keep only the last position
+    private func coalesceMouseEvents(_ mouseEvents: [InputMouseEvent]) -> [InputMouseEvent] {
+        var result: [InputMouseEvent] = []
+        var lastMoveEvent: InputMouseEvent? = nil
+        
+        for event in mouseEvents {
+            if event.action == .move {
+                lastMoveEvent = event
+            } else {
+                if let move = lastMoveEvent {
+                    result.append(move)
+                    lastMoveEvent = nil
+                }
+                result.append(event)
+            }
+        }
+        
+        if let move = lastMoveEvent {
+            result.append(move)
+        }
+        
+        return result
     }
 
     /// Parses ANSI escape sequences

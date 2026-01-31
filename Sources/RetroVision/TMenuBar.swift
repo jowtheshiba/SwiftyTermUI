@@ -515,7 +515,7 @@ public class TMenuBar: TView {
     @MainActor
     private func submenuLayout(for items: [TMenuItem], parentLayout: MenuLayout, parentIndex: Int) -> MenuLayout {
         var originX = parentLayout.x + parentLayout.width
-        let originY = parentLayout.y + parentIndex
+        let originY = parentLayout.y + 1 + parentIndex
         let (columns, _) = SwiftyTermUI.shared.getTerminalSize()
         var layout = menuLayout(for: items, originX: originX, originY: originY)
         if originX + layout.width > columns {

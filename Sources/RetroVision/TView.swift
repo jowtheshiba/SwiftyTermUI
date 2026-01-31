@@ -116,11 +116,20 @@ open class TView {
     /// Returns the focused view in this subtree, or nil if none
     @MainActor
     open func findFocusedView() -> TView? {
-        if isFocused { return self }
         for view in subviews {
             if let found = view.findFocusedView() { return found }
         }
+        if isFocused { return self }
         return nil
+    }
+
+    /// Clears focus state in this subtree
+    @MainActor
+    open func clearFocus() {
+        isFocused = false
+        for view in subviews {
+            view.clearFocus()
+        }
     }
     
     /// Brings a subview to the front (end of the array == front)

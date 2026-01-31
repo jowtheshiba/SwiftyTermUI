@@ -84,7 +84,7 @@ public class TInputLine: TView {
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) {
         guard event.action == .down, event.button == .left else { return }
-        let localPos = globalToLocal(event.position)
+        let localPos = event.position
         guard bounds.contains(localPos) else { return }
         RetroTextUtils.focus(view: self)
         let clickIndex = max(0, min(max(1, frame.width) - 1, localPos.x))

@@ -121,12 +121,11 @@ enum RetroTextUtils {
     
     @MainActor
     static func focus(view: TView) {
-        if let container = view.superview {
-            for item in container.subviews {
-                item.isFocused = (item === view)
-            }
-        } else {
-            view.isFocused = true
+        var root = view
+        while let parent = root.superview {
+            root = parent
         }
+        root.clearFocus()
+        view.isFocused = true
     }
 }
