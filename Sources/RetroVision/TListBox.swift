@@ -39,9 +39,9 @@ public class TListBox: TView {
         let origin = localToGlobal(Point(x: 0, y: 0))
         
         let fg: Color = .black
-        let bg: Color = .white
-        let selFg: Color = .white
-        let selBg: Color = .blue
+        let bg: Color = .indexed(30)
+        let selFg: Color = .brightWhite
+        let selBg: Color = .green
         
         tui.fillRect(
             row: origin.y,

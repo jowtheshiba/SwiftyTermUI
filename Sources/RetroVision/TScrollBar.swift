@@ -38,11 +38,11 @@ public class TScrollBar: TView {
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         
-        let arrowFg: Color = .brightWhite
+        let arrowFg: Color = .indexed(30)
         let arrowBg: Color = .blue
         let trackFg: Color = .blue
         let trackBg: Color = .brightBlue
-        let thumbFg: Color = .brightWhite
+        let thumbFg: Color = .indexed(30)
         let thumbBg: Color = .blue
         
         tui.fillRect(
@@ -189,7 +189,7 @@ public class TScrollBar: TView {
             tui.drawChar(
                 row: row,
                 column: origin.x,
-                character: isThumb ? "█" : "░",
+                character: isThumb ? "▪" : "░",
                 attributes: [],
                 foregroundColor: isThumb ? thumbFg : trackFg,
                 backgroundColor: isThumb ? thumbBg : trackBg
