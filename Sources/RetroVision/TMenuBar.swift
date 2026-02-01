@@ -570,7 +570,7 @@ public class TMenuBar: TView {
         }
         
         if indicatorWidth > 0, contentWidth > 0 {
-            chars[contentWidth - 1] = ">"
+            chars[contentWidth - 1] = "▶"
         }
         
         return String(chars)

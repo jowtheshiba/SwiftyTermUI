@@ -41,7 +41,7 @@ public class TScrollBar: TView {
         let arrowFg: Color = .indexed(30)
         let arrowBg: Color = .blue
         let trackFg: Color = .blue
-        let trackBg: Color = .brightBlue
+        let trackBg: Color = .indexed(30)
         let thumbFg: Color = .indexed(30)
         let thumbBg: Color = .blue
         

@@ -49,7 +49,7 @@ public class TRadioBox: TView {
         )
         
         let row = origin.y + (frame.height - 1) / 2
-        let mark = isSelected ? "*" : " "
+        let mark = isSelected ? "●" : " "
         let text = "(\(mark)) \(title)"
         let display = RetroTextUtils.clampText(text, maxWidth: frame.width)
         
