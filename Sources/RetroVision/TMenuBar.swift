@@ -169,7 +169,7 @@ public class TMenuBar: TView {
             backgroundColor: .white
         )
         
-        let selectedBg: Color = .indexed(22)
+        let selectedBg: Color = .green
         
         // Draw items
         for (index, item) in menu.items.enumerated() {
@@ -207,7 +207,7 @@ public class TMenuBar: TView {
                 )
                 
                 let isSelected = index == selectedItemIndex
-                let itemFg: Color = isSelected ? .white : .black
+                let itemFg: Color = isSelected ? .brightWhite : .black
                 let itemBg: Color = isSelected ? selectedBg : .white
                 
                 let itemText = buildItemLine(item, contentWidth: dropdownLayout.width - 2)
@@ -609,7 +609,7 @@ public class TMenuBar: TView {
     @MainActor
     private func drawSubmenu(_ items: [TMenuItem], layout: MenuLayout, selectedIndex: Int) {
         let tui = SwiftyTermUI.shared
-        let selectedBg: Color = .indexed(22)
+        let selectedBg: Color = .green
         
         tui.fillRect(
             row: layout.y + 1,
@@ -680,7 +680,7 @@ public class TMenuBar: TView {
                 )
                 
                 let isSelected = index == selectedIndex
-                let itemFg: Color = isSelected ? .white : .black
+                let itemFg: Color = isSelected ? .brightWhite : .black
                 let itemBg: Color = isSelected ? selectedBg : .white
                 let itemText = buildItemLine(item, contentWidth: layout.width - 2)
                 

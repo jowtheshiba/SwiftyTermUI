@@ -9,6 +9,7 @@ public class TWindow: TView {
     
     public var title: String
     public var style: WindowStyle
+    public var isDragging: Bool = false
     
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
@@ -24,8 +25,8 @@ public class TWindow: TView {
         let globalPos = localToGlobal(Point(x: 0, y: 0))
         
         // Colors based on style
-        let frameFg: Color
-        let frameBg: Color
+        var frameFg: Color
+        var frameBg: Color
         let contentFg: Color
         let contentBg: Color
         
@@ -43,6 +44,9 @@ public class TWindow: TView {
             contentFg = .black
             contentBg = .white
         }
+        
+        let borderFg: Color = isDragging ? .brightGreen : frameFg
+        let titleFg: Color = isDragging ? .brightGreen : frameFg
         
         // 1. Draw Shadow
         // Shadow is offset by (1, 1) and is usually black/dark grey
@@ -82,7 +86,7 @@ public class TWindow: TView {
             height: frame.height,
             character: " ", // Not used by drawBox implementation below
             attributes: [],
-            foregroundColor: frameFg,
+            foregroundColor: borderFg,
             backgroundColor: frameBg
         )
         
@@ -96,7 +100,7 @@ public class TWindow: TView {
                 column: titleX,
                 text: " \(title) ",
                 attributes: [],
-                foregroundColor: frameFg, // Title usually same as frame or highlighted
+                foregroundColor: titleFg,
                 backgroundColor: frameBg
             )
         }
@@ -109,7 +113,7 @@ public class TWindow: TView {
                 column: globalPos.x + 2,
                 text: "[■]",
                 attributes: [],
-                foregroundColor: .green,
+                foregroundColor: isDragging ? titleFg : .green,
                 backgroundColor: frameBg
             )
         }

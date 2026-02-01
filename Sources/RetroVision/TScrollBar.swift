@@ -38,24 +38,36 @@ public class TScrollBar: TView {
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         
-        let fg: Color = .black
-        let bg: Color = .white
-        let thumbColor: Color = .blue
+        let arrowFg: Color = .brightWhite
+        let arrowBg: Color = .blue
+        let trackFg: Color = .blue
+        let trackBg: Color = .brightBlue
+        let thumbFg: Color = .brightWhite
+        let thumbBg: Color = .blue
         
         tui.fillRect(
             row: origin.y,
             column: origin.x,
             width: frame.width,
             height: frame.height,
-            character: " ",
+            character: "░",
             attributes: [],
-            foregroundColor: fg,
-            backgroundColor: bg
+            foregroundColor: trackFg,
+            backgroundColor: trackBg
         )
         
         switch orientation {
         case .vertical:
-            drawVertical(tui: tui, origin: origin, fg: fg, bg: bg, thumb: thumbColor)
+            drawVertical(
+                tui: tui,
+                origin: origin,
+                arrowFg: arrowFg,
+                arrowBg: arrowBg,
+                trackFg: trackFg,
+                trackBg: trackBg,
+                thumbFg: thumbFg,
+                thumbBg: thumbBg
+            )
         }
     }
     
@@ -135,7 +147,16 @@ public class TScrollBar: TView {
     }
     
     @MainActor
-    private func drawVertical(tui: SwiftyTermUI, origin: Point, fg: Color, bg: Color, thumb: Color) {
+    private func drawVertical(
+        tui: SwiftyTermUI,
+        origin: Point,
+        arrowFg: Color,
+        arrowBg: Color,
+        trackFg: Color,
+        trackBg: Color,
+        thumbFg: Color,
+        thumbBg: Color
+    ) {
         let height = frame.height
         if height <= 0 { return }
         
@@ -144,8 +165,8 @@ public class TScrollBar: TView {
             column: origin.x,
             character: "▲",
             attributes: [],
-            foregroundColor: fg,
-            backgroundColor: bg
+            foregroundColor: arrowFg,
+            backgroundColor: arrowBg
         )
         if height > 1 {
             tui.drawChar(
@@ -153,8 +174,8 @@ public class TScrollBar: TView {
                 column: origin.x,
                 character: "▼",
                 attributes: [],
-                foregroundColor: fg,
-                backgroundColor: bg
+                foregroundColor: arrowFg,
+                backgroundColor: arrowBg
             )
         }
         
@@ -168,10 +189,10 @@ public class TScrollBar: TView {
             tui.drawChar(
                 row: row,
                 column: origin.x,
-                character: isThumb ? "█" : "│",
+                character: isThumb ? "█" : "░",
                 attributes: [],
-                foregroundColor: isThumb ? thumb : fg,
-                backgroundColor: bg
+                foregroundColor: isThumb ? thumbFg : trackFg,
+                backgroundColor: isThumb ? thumbBg : trackBg
             )
         }
     }

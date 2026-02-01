@@ -8,6 +8,9 @@ open class TApplication {
     
 
     private var isRunning = false
+    private var inputBlinkVisible = true
+    private var lastInputBlinkToggle = Date()
+    private let inputBlinkInterval: TimeInterval = 0.5
     
     public init() {}
     
@@ -64,6 +67,7 @@ open class TApplication {
                 }
                 
                 if !hasEvents {
+                    handleInputBlinkTick()
                     Thread.sleep(forTimeInterval: 0.001)
                 }
             }
@@ -102,6 +106,7 @@ open class TApplication {
             desktop.handleEvent(tEvent)
             
             if let focused = desktop.findFocusedView(), focused is TInputLine {
+                resetInputBlink()
                 needsFullRedraw = false
                 focused.draw()
                 try? SwiftyTermUI.shared.refresh()
@@ -191,5 +196,25 @@ open class TApplication {
         menuBar?.draw()
         desktop.drawCursor()
         try? SwiftyTermUI.shared.refresh()
+    }
+
+    @MainActor
+    public func resetInputBlink() {
+        inputBlinkVisible = true
+        lastInputBlinkToggle = Date()
+        TInputLine.cursorBlinkVisible = true
+    }
+
+    @MainActor
+    private func handleInputBlinkTick() {
+        guard let focused = desktop.findFocusedView() as? TInputLine else { return }
+        let now = Date()
+        if now.timeIntervalSince(lastInputBlinkToggle) >= inputBlinkInterval {
+            inputBlinkVisible.toggle()
+            lastInputBlinkToggle = now
+            TInputLine.cursorBlinkVisible = inputBlinkVisible
+            focused.draw()
+            try? SwiftyTermUI.shared.refresh()
+        }
     }
 }

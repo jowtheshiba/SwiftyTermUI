@@ -169,6 +169,9 @@ public class TDesktop: TView {
     private func handleMouseUp(_ event: TEvent.MouseEvent) -> Bool {
         guard event.button == .left else { return false }
         let wasDragging = draggingWindow != nil
+        if let window = draggingWindow {
+            window.isDragging = false
+        }
         draggingWindow = nil
         return wasDragging
     }
@@ -176,6 +179,7 @@ public class TDesktop: TView {
     @MainActor
     private func startDragging(window: TWindow, at position: Point) {
         draggingWindow = window
+        window.isDragging = true
         let windowOrigin = window.globalFrame
         dragOffset = Point(x: position.x - windowOrigin.x, y: position.y - windowOrigin.y)
     }

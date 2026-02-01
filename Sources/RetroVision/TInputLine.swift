@@ -1,6 +1,8 @@
 import SwiftyTermUI
 
 public class TInputLine: TView {
+    @MainActor public static var cursorBlinkVisible: Bool = true
+
     public var text: String {
         didSet {
             clampCursor()
@@ -60,12 +62,12 @@ public class TInputLine: TView {
             backgroundColor: bg
         )
         
-        if isFocused {
+        if isFocused, Self.cursorBlinkVisible {
             let cursorColumn = origin.x + max(0, min(drawWidth - 1, cursorPosition - scrollOffset))
             tui.drawChar(
                 row: row,
                 column: cursorColumn,
-                character: "▌",
+                character: "_",
                 attributes: [],
                 foregroundColor: .brightWhite,
                 backgroundColor: bg
@@ -87,6 +89,7 @@ public class TInputLine: TView {
         let localPos = event.position
         guard bounds.contains(localPos) else { return }
         RetroTextUtils.focus(view: self)
+        TApplication.shared.resetInputBlink()
         let clickIndex = max(0, min(max(1, frame.width) - 1, localPos.x))
         cursorPosition = min(text.count, scrollOffset + clickIndex)
         clampCursor()
