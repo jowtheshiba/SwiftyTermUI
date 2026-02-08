@@ -10,11 +10,34 @@ public class TWindow: TView {
     public var title: String
     public var style: WindowStyle
     public var isDragging: Bool = false
+    public var isResizing: Bool = false
+    public var allowsResize: Bool
+    public var minWidth: Int = 10
+    public var minHeight: Int = 5
+    
+    public var showsVerticalScrollBar: Bool = false {
+        didSet { updateScrollBars() }
+    }
+    public var showsHorizontalScrollBar: Bool = false {
+        didSet { updateScrollBars() }
+    }
+    
+    public private(set) var verticalScrollBar: TScrollBar?
+    public private(set) var horizontalScrollBar: TScrollBar?
+    
+    public var onDrawContent: ((Rect) -> Void)?
     
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
         self.style = style
+        self.allowsResize = (style == .window)
         super.init(frame: frame)
+    }
+    
+    public var contentFrame: Rect {
+        let innerWidth = max(0, frame.width - 2)
+        let innerHeight = max(0, frame.height - 2)
+        return Rect(x: 1, y: 1, width: innerWidth, height: innerHeight)
     }
     
     @MainActor
@@ -45,8 +68,9 @@ public class TWindow: TView {
             contentBg = .white
         }
         
-        let borderFg: Color = isDragging ? .brightGreen : frameFg
-        let titleFg: Color = isDragging ? .brightGreen : frameFg
+        let borderHighlight = isDragging || isResizing
+        let borderFg: Color = borderHighlight ? .brightGreen : frameFg
+        let titleFg: Color = borderHighlight ? .brightGreen : frameFg
         
         // 1. Draw Shadow
         // Shadow is offset by (1, 1) and is usually black/dark grey
@@ -75,20 +99,73 @@ public class TWindow: TView {
             backgroundColor: frameBg
         )
         
-        // 3. Draw Double Border
-        // We use the extension method drawBox but we need to ensure it uses double lines
-        // The extension in this file uses "═", "║", etc. which are double lines.
-        // We just need to call it with the right colors.
-        tui.drawBox(
-            row: globalPos.y,
-            column: globalPos.x,
-            width: frame.width,
-            height: frame.height,
-            character: " ", // Not used by drawBox implementation below
-            attributes: [],
-            foregroundColor: borderFg,
-            backgroundColor: frameBg
-        )
+        // 3. Draw Double Border (skip right/bottom when scrollbars are shown)
+        let left = globalPos.x
+        let top = globalPos.y
+        let right = globalPos.x + frame.width - 1
+        let bottom = globalPos.y + frame.height - 1
+        
+        // Corners
+        tui.drawChar(row: top, column: left, character: "╔", attributes: [], foregroundColor: borderFg, backgroundColor: frameBg)
+        tui.drawChar(row: top, column: right, character: "╗", attributes: [], foregroundColor: borderFg, backgroundColor: frameBg)
+        tui.drawChar(row: bottom, column: left, character: "╚", attributes: [], foregroundColor: borderFg, backgroundColor: frameBg)
+        tui.drawChar(row: bottom, column: right, character: "╝", attributes: [], foregroundColor: borderFg, backgroundColor: frameBg)
+        
+        // Top border (always)
+        if frame.width > 2 {
+            tui.drawLine(
+                fromRow: top,
+                fromColumn: left + 1,
+                toRow: top,
+                toColumn: right - 1,
+                character: "═",
+                attributes: [],
+                foregroundColor: borderFg,
+                backgroundColor: frameBg
+            )
+        }
+        
+        // Bottom border (only if no horizontal scrollbar)
+        if !showsHorizontalScrollBar, frame.width > 2 {
+            tui.drawLine(
+                fromRow: bottom,
+                fromColumn: left + 1,
+                toRow: bottom,
+                toColumn: right - 1,
+                character: "═",
+                attributes: [],
+                foregroundColor: borderFg,
+                backgroundColor: frameBg
+            )
+        }
+        
+        // Left border (always)
+        if frame.height > 2 {
+            tui.drawLine(
+                fromRow: top + 1,
+                fromColumn: left,
+                toRow: bottom - 1,
+                toColumn: left,
+                character: "║",
+                attributes: [],
+                foregroundColor: borderFg,
+                backgroundColor: frameBg
+            )
+        }
+        
+        // Right border (only if no vertical scrollbar)
+        if !showsVerticalScrollBar, frame.height > 2 {
+            tui.drawLine(
+                fromRow: top + 1,
+                fromColumn: right,
+                toRow: bottom - 1,
+                toColumn: right,
+                character: "║",
+                attributes: [],
+                foregroundColor: borderFg,
+                backgroundColor: frameBg
+            )
+        }
         
         // 4. Draw Title
         let titleLen = title.count
@@ -119,21 +196,88 @@ public class TWindow: TView {
         }
         
         // 6. Fill Content Area
-        // Content area is usually inside the border (inset by 1)
-        tui.fillRect(
-            row: globalPos.y + 1,
-            column: globalPos.x + 1,
-            width: frame.width - 2,
-            height: frame.height - 2,
-            character: " ",
-            attributes: [],
-            foregroundColor: contentFg,
-            backgroundColor: contentBg
-        )
+        let content = contentFrame
+        if content.width > 0 && content.height > 0 {
+            tui.fillRect(
+                row: globalPos.y + content.y,
+                column: globalPos.x + content.x,
+                width: content.width,
+                height: content.height,
+                character: " ",
+                attributes: [],
+                foregroundColor: contentFg,
+                backgroundColor: contentBg
+            )
+        }
         
-        // 7. Draw subviews
+        // 7. Custom content drawing (inside the content area)
+        if content.width > 0 && content.height > 0 {
+            let contentGlobal = Rect(
+                x: globalPos.x + content.x,
+                y: globalPos.y + content.y,
+                width: content.width,
+                height: content.height
+            )
+            onDrawContent?(contentGlobal)
+        }
+        
+        // 8. Layout scrollbars before drawing subviews
+        layoutScrollBars()
+        
+        // 9. Draw subviews
         for view in subviews {
             view.draw()
+        }
+    }
+    
+    private func updateScrollBars() {
+        if showsVerticalScrollBar {
+            if verticalScrollBar == nil {
+                let bar = TScrollBar(frame: Rect(x: 0, y: 0, width: 1, height: 1), orientation: .vertical)
+                bar.palette = .listView
+                bar.glyphs = .listView
+                verticalScrollBar = bar
+                addSubview(bar)
+            }
+            verticalScrollBar?.isVisible = true
+        } else {
+            verticalScrollBar?.isVisible = false
+        }
+        
+        if showsHorizontalScrollBar {
+            if horizontalScrollBar == nil {
+                let bar = TScrollBar(frame: Rect(x: 0, y: 0, width: 1, height: 1), orientation: .horizontal)
+                bar.palette = .listView
+                bar.glyphs = .listView
+                horizontalScrollBar = bar
+                addSubview(bar)
+            }
+            horizontalScrollBar?.isVisible = true
+        } else {
+            horizontalScrollBar?.isVisible = false
+        }
+    }
+    
+    private func layoutScrollBars() {
+        let innerWidth = max(0, frame.width - 2)
+        let innerHeight = max(0, frame.height - 2)
+        
+        if let vertical = verticalScrollBar, showsVerticalScrollBar {
+            vertical.frame = Rect(
+                x: frame.width - 1,
+                y: 1,
+                width: 1,
+                height: innerHeight
+            )
+        }
+        
+        if let horizontal = horizontalScrollBar, showsHorizontalScrollBar {
+            horizontal.frame = Rect(
+                x: 1,
+                y: frame.height - 1,
+                width: innerWidth,
+                height: 1
+            )
         }
     }
 }

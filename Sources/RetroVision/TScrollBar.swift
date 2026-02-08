@@ -3,6 +3,61 @@ import SwiftyTermUI
 public class TScrollBar: TView {
     public enum Orientation {
         case vertical
+        case horizontal
+    }
+    
+    public struct Palette: Sendable {
+        public var arrowFg: Color
+        public var arrowBg: Color
+        public var trackFg: Color
+        public var trackBg: Color
+        public var thumbFg: Color
+        public var thumbBg: Color
+        
+        public static let listView = Palette(
+            arrowFg: .black,
+            arrowBg: .indexed(30),
+            trackFg: .black,
+            trackBg: .indexed(30),
+            thumbFg: .black,
+            thumbBg: .indexed(30)
+        )
+        
+        public static let retroDefault = Palette(
+            arrowFg: .indexed(30),
+            arrowBg: .blue,
+            trackFg: .blue,
+            trackBg: .indexed(30),
+            thumbFg: .indexed(30),
+            thumbBg: .blue
+        )
+    }
+    
+    public struct Glyphs: Sendable {
+        public var arrowUp: Character
+        public var arrowDown: Character
+        public var arrowLeft: Character
+        public var arrowRight: Character
+        public var track: Character
+        public var thumb: Character
+        
+        public static let listView = Glyphs(
+            arrowUp: "▲",
+            arrowDown: "▼",
+            arrowLeft: "◄",
+            arrowRight: "►",
+            track: "░",
+            thumb: "▓"
+        )
+        
+        public static let retroDefault = Glyphs(
+            arrowUp: "▲",
+            arrowDown: "▼",
+            arrowLeft: "◄",
+            arrowRight: "►",
+            track: "░",
+            thumb: "▪"
+        )
     }
     
     public var orientation: Orientation
@@ -24,6 +79,8 @@ public class TScrollBar: TView {
     }
     
     public var onChange: ((Int) -> Void)?
+    public var palette: Palette = .retroDefault
+    public var glyphs: Glyphs = .retroDefault
     
     public init(frame: Rect, orientation: Orientation = .vertical) {
         self.orientation = orientation
@@ -38,22 +95,15 @@ public class TScrollBar: TView {
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         
-        let arrowFg: Color = .indexed(30)
-        let arrowBg: Color = .blue
-        let trackFg: Color = .blue
-        let trackBg: Color = .indexed(30)
-        let thumbFg: Color = .indexed(30)
-        let thumbBg: Color = .blue
-        
         tui.fillRect(
             row: origin.y,
             column: origin.x,
             width: frame.width,
             height: frame.height,
-            character: "░",
+            character: glyphs.track,
             attributes: [],
-            foregroundColor: trackFg,
-            backgroundColor: trackBg
+            foregroundColor: palette.trackFg,
+            backgroundColor: palette.trackBg
         )
         
         switch orientation {
@@ -61,12 +111,23 @@ public class TScrollBar: TView {
             drawVertical(
                 tui: tui,
                 origin: origin,
-                arrowFg: arrowFg,
-                arrowBg: arrowBg,
-                trackFg: trackFg,
-                trackBg: trackBg,
-                thumbFg: thumbFg,
-                thumbBg: thumbBg
+                arrowFg: palette.arrowFg,
+                arrowBg: palette.arrowBg,
+                trackFg: palette.trackFg,
+                trackBg: palette.trackBg,
+                thumbFg: palette.thumbFg,
+                thumbBg: palette.thumbBg
+            )
+        case .horizontal:
+            drawHorizontal(
+                tui: tui,
+                origin: origin,
+                arrowFg: palette.arrowFg,
+                arrowBg: palette.arrowBg,
+                trackFg: palette.trackFg,
+                trackBg: palette.trackBg,
+                thumbFg: palette.thumbFg,
+                thumbBg: palette.thumbBg
             )
         }
     }
@@ -88,33 +149,61 @@ public class TScrollBar: TView {
         switch orientation {
         case .vertical:
             handleVerticalClick(event.position.y)
+        case .horizontal:
+            handleHorizontalClick(event.position.x)
         }
     }
     
     // MARK: - Private
     
     private func handleKey(_ key: Key) -> Bool {
-        switch key {
-        case .up:
-            value -= 1
-            return true
-        case .down:
-            value += 1
-            return true
-        case .pageUp:
-            value -= max(1, pageSize)
-            return true
-        case .pageDown:
-            value += max(1, pageSize)
-            return true
-        case .home:
-            value = 0
-            return true
-        case .end:
-            value = maxValue()
-            return true
-        default:
-            return false
+        switch orientation {
+        case .vertical:
+            switch key {
+            case .up:
+                value -= 1
+                return true
+            case .down:
+                value += 1
+                return true
+            case .pageUp:
+                value -= max(1, pageSize)
+                return true
+            case .pageDown:
+                value += max(1, pageSize)
+                return true
+            case .home:
+                value = 0
+                return true
+            case .end:
+                value = maxValue()
+                return true
+            default:
+                return false
+            }
+        case .horizontal:
+            switch key {
+            case .left:
+                value -= 1
+                return true
+            case .right:
+                value += 1
+                return true
+            case .pageUp:
+                value -= max(1, pageSize)
+                return true
+            case .pageDown:
+                value += max(1, pageSize)
+                return true
+            case .home:
+                value = 0
+                return true
+            case .end:
+                value = maxValue()
+                return true
+            default:
+                return false
+            }
         }
     }
     
@@ -146,6 +235,34 @@ public class TScrollBar: TView {
         }
     }
     
+    private func handleHorizontalClick(_ localX: Int) {
+        let width = frame.width
+        if width <= 0 { return }
+        if localX == 0 {
+            value -= 1
+            return
+        }
+        if localX == width - 1 {
+            value += 1
+            return
+        }
+        
+        let trackWidth = max(1, width - 2)
+        let thumbInfo = horizontalThumb(trackWidth: trackWidth)
+        let thumbStart = 1 + thumbInfo.position
+        let thumbEnd = thumbStart + thumbInfo.size - 1
+        
+        if localX < thumbStart {
+            value -= max(1, pageSize)
+        } else if localX > thumbEnd {
+            value += max(1, pageSize)
+        } else {
+            let relative = max(0, min(trackWidth - 1, localX - 1))
+            let target = Int((Double(relative) / Double(max(1, trackWidth - 1))) * Double(maxValue()))
+            value = target
+        }
+    }
+    
     @MainActor
     private func drawVertical(
         tui: SwiftyTermUI,
@@ -163,7 +280,7 @@ public class TScrollBar: TView {
         tui.drawChar(
             row: origin.y,
             column: origin.x,
-            character: "▲",
+            character: glyphs.arrowUp,
             attributes: [],
             foregroundColor: arrowFg,
             backgroundColor: arrowBg
@@ -172,7 +289,7 @@ public class TScrollBar: TView {
             tui.drawChar(
                 row: origin.y + height - 1,
                 column: origin.x,
-                character: "▼",
+                character: glyphs.arrowDown,
                 attributes: [],
                 foregroundColor: arrowFg,
                 backgroundColor: arrowBg
@@ -189,7 +306,58 @@ public class TScrollBar: TView {
             tui.drawChar(
                 row: row,
                 column: origin.x,
-                character: isThumb ? "▪" : "░",
+                character: isThumb ? glyphs.thumb : glyphs.track,
+                attributes: [],
+                foregroundColor: isThumb ? thumbFg : trackFg,
+                backgroundColor: isThumb ? thumbBg : trackBg
+            )
+        }
+    }
+    
+    @MainActor
+    private func drawHorizontal(
+        tui: SwiftyTermUI,
+        origin: Point,
+        arrowFg: Color,
+        arrowBg: Color,
+        trackFg: Color,
+        trackBg: Color,
+        thumbFg: Color,
+        thumbBg: Color
+    ) {
+        let width = frame.width
+        if width <= 0 { return }
+        
+        tui.drawChar(
+            row: origin.y,
+            column: origin.x,
+            character: glyphs.arrowLeft,
+            attributes: [],
+            foregroundColor: arrowFg,
+            backgroundColor: arrowBg
+        )
+        if width > 1 {
+            tui.drawChar(
+                row: origin.y,
+                column: origin.x + width - 1,
+                character: glyphs.arrowRight,
+                attributes: [],
+                foregroundColor: arrowFg,
+                backgroundColor: arrowBg
+            )
+        }
+        
+        if width <= 2 { return }
+        let trackWidth = width - 2
+        let thumbInfo = horizontalThumb(trackWidth: trackWidth)
+        
+        for i in 0..<trackWidth {
+            let column = origin.x + 1 + i
+            let isThumb = i >= thumbInfo.position && i < thumbInfo.position + thumbInfo.size
+            tui.drawChar(
+                row: origin.y,
+                column: column,
+                character: isThumb ? glyphs.thumb : glyphs.track,
                 attributes: [],
                 foregroundColor: isThumb ? thumbFg : trackFg,
                 backgroundColor: isThumb ? thumbBg : trackBg
@@ -207,6 +375,18 @@ public class TScrollBar: TView {
         }
         let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
         return (max(0, min(pos, maxPos)), min(trackHeight, thumbSize))
+    }
+    
+    private func horizontalThumb(trackWidth: Int) -> (position: Int, size: Int) {
+        let total = max(1, totalItems)
+        let page = max(1, pageSize)
+        let thumbSize = max(1, Int(Double(page) / Double(total) * Double(trackWidth)))
+        let maxPos = max(0, trackWidth - thumbSize)
+        if maxValue() == 0 {
+            return (0, min(trackWidth, thumbSize))
+        }
+        let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
+        return (max(0, min(pos, maxPos)), min(trackWidth, thumbSize))
     }
     
     private func maxValue() -> Int {

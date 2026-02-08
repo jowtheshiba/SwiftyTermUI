@@ -50,6 +50,21 @@ struct RetroDemo {
         
         // Create Editor Window (Blue)
         let editorWindow = TWindow(frame: Rect(x: 5, y: 3, width: 50, height: 15), title: "Editor Window", style: .window)
+        editorWindow.showsVerticalScrollBar = true
+        editorWindow.showsHorizontalScrollBar = true
+        editorWindow.onDrawContent = { content in
+            guard content.width >= 10, content.height > 0 else { return }
+            let tui = SwiftyTermUI.shared
+            let text = "Canvas"
+            tui.drawString(
+                row: content.y + max(0, content.height - 1),
+                column: content.x + 1,
+                text: text,
+                attributes: [],
+                foregroundColor: .white,
+                backgroundColor: .blue
+            )
+        }
         
         // Examples: Static text + checkbox
         let editorHelpText = TStaticText(
@@ -83,7 +98,7 @@ struct RetroDemo {
         app.desktop.addSubview(editorWindow)
         
         // Create Dialog Window (Grey)
-        let dialogWindow = TWindow(frame: Rect(x: 20, y: 8, width: 40, height: 12), title: "Find Dialog", style: .dialog)
+        let dialogWindow = TDialog(frame: Rect(x: 20, y: 8, width: 40, height: 12), title: "Find Dialog")
         
         // Examples: Label + checkbox
         let matchCaseBox = TCheckBox(frame: Rect(x: 3, y: 3, width: 30, height: 1), title: "Match case", isChecked: false)
