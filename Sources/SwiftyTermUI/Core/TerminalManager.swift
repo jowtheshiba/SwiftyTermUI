@@ -34,8 +34,8 @@ public final class TerminalManager {
 
         // Disable canonical mode and echo
         newTermios.c_lflag &= ~(UInt(ICANON) | UInt(ECHO))
-        newTermios.c_cc.0 = 0 // VMIN
-        newTermios.c_cc.1 = 0 // VTIME
+        newTermios.c_cc.16 = 0 // VMIN  — index 16 on macOS/Darwin
+        newTermios.c_cc.17 = 0 // VTIME — index 17 on macOS/Darwin
 
         guard tcsetattr(STDIN_FILENO, TCSAFLUSH, &newTermios) == 0 else {
             throw TerminalError.failedToSetTerminalAttributes

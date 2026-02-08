@@ -66,8 +66,9 @@ open class TApplication {
                     }
                 }
                 
+                handleInputBlinkTick()
+                
                 if !hasEvents {
-                    handleInputBlinkTick()
                     Thread.sleep(forTimeInterval: 0.001)
                 }
             }
@@ -105,7 +106,7 @@ open class TApplication {
             
             desktop.handleEvent(tEvent)
             
-            if let focused = desktop.findFocusedView(), focused is TInputLine {
+            if let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
                 resetInputBlink()
                 needsFullRedraw = false
                 focused.draw()
@@ -212,13 +213,14 @@ open class TApplication {
 
     @MainActor
     private func handleInputBlinkTick() {
-        guard let focused = desktop.findFocusedView() as? TInputLine else { return }
+        let focused = desktop.findFocusedView()
+        guard focused is TInputLine || focused is TMemo else { return }
         let now = Date()
         if now.timeIntervalSince(lastInputBlinkToggle) >= inputBlinkInterval {
             inputBlinkVisible.toggle()
             lastInputBlinkToggle = now
             TInputLine.cursorBlinkVisible = inputBlinkVisible
-            focused.draw()
+            focused?.draw()
             try? SwiftyTermUI.shared.refresh()
         }
     }

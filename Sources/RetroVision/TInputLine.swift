@@ -78,6 +78,7 @@ public class TInputLine: TView {
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         if case .key(let key) = event, isFocused, handleKey(key) {
+            TApplication.shared.resetInputBlink()
             return
         }
         super.handleEvent(event)
