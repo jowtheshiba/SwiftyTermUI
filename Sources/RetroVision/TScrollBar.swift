@@ -15,12 +15,12 @@ public class TScrollBar: TView {
         public var thumbBg: Color
         
         public static let listView = Palette(
-            arrowFg: .black,
-            arrowBg: .indexed(30),
-            trackFg: .black,
-            trackBg: .indexed(30),
-            thumbFg: .black,
-            thumbBg: .indexed(30)
+            arrowFg: .rgb(0, 0, 170),
+            arrowBg: .rgb(0, 170, 170),
+            trackFg: .rgb(0, 0, 170),
+            trackBg: .rgb(0, 170, 170),
+            thumbFg: .rgb(0, 0, 170),
+            thumbBg: .rgb(0, 170, 170)
         )
         
         public static let retroDefault = Palette(
@@ -47,7 +47,7 @@ public class TScrollBar: TView {
             arrowLeft: "◄",
             arrowRight: "►",
             track: "░",
-            thumb: "▓"
+            thumb: "▪"
         )
         
         public static let retroDefault = Glyphs(
@@ -368,11 +368,11 @@ public class TScrollBar: TView {
     private func verticalThumb(trackHeight: Int) -> (position: Int, size: Int) {
         let total = max(1, totalItems)
         let page = max(1, pageSize)
+        if maxValue() == 0 {
+            return (0, 0)
+        }
         let thumbSize = max(1, Int(Double(page) / Double(total) * Double(trackHeight)))
         let maxPos = max(0, trackHeight - thumbSize)
-        if maxValue() == 0 {
-            return (0, min(trackHeight, thumbSize))
-        }
         let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
         return (max(0, min(pos, maxPos)), min(trackHeight, thumbSize))
     }
@@ -380,11 +380,11 @@ public class TScrollBar: TView {
     private func horizontalThumb(trackWidth: Int) -> (position: Int, size: Int) {
         let total = max(1, totalItems)
         let page = max(1, pageSize)
+        if maxValue() == 0 {
+            return (0, 0)
+        }
         let thumbSize = max(1, Int(Double(page) / Double(total) * Double(trackWidth)))
         let maxPos = max(0, trackWidth - thumbSize)
-        if maxValue() == 0 {
-            return (0, min(trackWidth, thumbSize))
-        }
         let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
         return (max(0, min(pos, maxPos)), min(trackWidth, thumbSize))
     }

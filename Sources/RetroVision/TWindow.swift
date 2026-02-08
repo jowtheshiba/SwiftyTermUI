@@ -11,7 +11,12 @@ public class TWindow: TView {
     public var style: WindowStyle
     public var isDragging: Bool = false
     public var isResizing: Bool = false
-    public var allowsResize: Bool
+    public var allowResizing: Bool = true
+    // Backwards-compat alias
+    public var allowsResize: Bool {
+        get { allowResizing }
+        set { allowResizing = newValue }
+    }
     public var minWidth: Int = 10
     public var minHeight: Int = 5
     
@@ -30,7 +35,7 @@ public class TWindow: TView {
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
         self.style = style
-        self.allowsResize = (style == .window)
+        self.allowResizing = true
         super.init(frame: frame)
     }
     

@@ -242,7 +242,7 @@ public class TDesktop: TView {
     
     @MainActor
     private func resize(window: TWindow, to globalPoint: Point) {
-        guard window.allowsResize else { return }
+        guard window.allowResizing else { return }
         
         let deltaX = globalPoint.x - resizeStartPoint.x
         let deltaY = globalPoint.y - resizeStartPoint.y
@@ -284,7 +284,7 @@ public class TDesktop: TView {
     }
     
     private func isResizeHandleHit(window: TWindow, at point: Point) -> Bool {
-        guard window.allowsResize, window.style == .window else { return false }
+        guard window.allowResizing, window.style == .window else { return false }
         let frame = window.globalFrame
         guard frame.width >= 2, frame.height >= 2 else { return false }
         let cornerX = frame.x + frame.width - 1
