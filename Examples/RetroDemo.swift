@@ -66,6 +66,9 @@ struct RetroDemo {
             )
         }
         
+        // Create Controls Window (Grey)
+        let controlsWindow = TDialog(frame: Rect(x: 7, y: 6, width: 50, height: 16), title: "Controls")
+        
         // Examples: Static text + checkbox
         let editorHelpText = TStaticText(
             frame: Rect(x: 2, y: 2, width: 30, height: 2),
@@ -80,22 +83,31 @@ struct RetroDemo {
         let editorScroll = TScrollBar(frame: Rect(x: 20, y: 7, width: 1, height: 4))
         editorList.scrollBar = editorScroll
         
-        editorWindow.addSubview(editorHelpText)
-        editorWindow.addSubview(editorCheckBox)
-        editorWindow.addSubview(editorList)
-        editorWindow.addSubview(editorScroll)
+        controlsWindow.addSubview(editorHelpText)
+        controlsWindow.addSubview(editorCheckBox)
+        controlsWindow.addSubview(editorList)
+        controlsWindow.addSubview(editorScroll)
         
-        // Add buttons to editor window
-        let okButton = TButton(frame: Rect(x: 10, y: 12, width: 12, height: 1), title: "OK") {
+        // Examples: Radio group
+        let radioLight = TRadioBox(frame: Rect(x: 30, y: 4, width: 18, height: 1), title: "Light", groupID: "theme", isSelected: true)
+        let radioDark = TRadioBox(frame: Rect(x: 30, y: 5, width: 18, height: 1), title: "Dark", groupID: "theme", isSelected: false)
+        let radioAuto = TRadioBox(frame: Rect(x: 30, y: 6, width: 18, height: 1), title: "Auto", groupID: "theme", isSelected: false)
+        controlsWindow.addSubview(radioLight)
+        controlsWindow.addSubview(radioDark)
+        controlsWindow.addSubview(radioAuto)
+        
+        // Add buttons to controls window
+        let okButton = TButton(frame: Rect(x: 12, y: 12, width: 12, height: 1), title: "OK") {
         }
         okButton.isFocused = true
         
-        let cancelButton = TButton(frame: Rect(x: 25, y: 12, width: 12, height: 1), title: "Cancel") {
+        let cancelButton = TButton(frame: Rect(x: 29, y: 12, width: 12, height: 1), title: "Cancel") {
         }
         
-        editorWindow.addSubview(okButton)
-        editorWindow.addSubview(cancelButton)
+        controlsWindow.addSubview(okButton)
+        controlsWindow.addSubview(cancelButton)
         app.desktop.addSubview(editorWindow)
+        app.desktop.addSubview(controlsWindow)
         
         // Create Dialog Window (Grey)
         let dialogWindow = TDialog(frame: Rect(x: 20, y: 8, width: 40, height: 12), title: "Find Dialog")
@@ -121,20 +133,6 @@ struct RetroDemo {
         dialogWindow.addSubview(findButton)
         dialogWindow.addSubview(replaceButton)
         app.desktop.addSubview(dialogWindow)
-        
-        // Create Options Window (Blue)
-        let optionsWindow = TWindow(frame: Rect(x: 58, y: 4, width: 24, height: 10), title: "Options", style: .window)
-        
-        // Examples: Radio group
-        let radioLabel = TStaticText(frame: Rect(x: 2, y: 1, width: 18, height: 1), text: "Theme")
-        let radioLight = TRadioBox(frame: Rect(x: 2, y: 3, width: 18, height: 1), title: "Light", groupID: "theme", isSelected: true)
-        let radioDark = TRadioBox(frame: Rect(x: 2, y: 4, width: 18, height: 1), title: "Dark", groupID: "theme", isSelected: false)
-        let radioAuto = TRadioBox(frame: Rect(x: 2, y: 5, width: 18, height: 1), title: "Auto", groupID: "theme", isSelected: false)
-        optionsWindow.addSubview(radioLabel)
-        optionsWindow.addSubview(radioLight)
-        optionsWindow.addSubview(radioDark)
-        optionsWindow.addSubview(radioAuto)
-        app.desktop.addSubview(optionsWindow)
         
         let statusLine = TStatusLine(
             frame: Rect(x: 0, y: rows - 1, width: cols, height: 1),

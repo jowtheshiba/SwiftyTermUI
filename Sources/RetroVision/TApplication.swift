@@ -147,6 +147,11 @@ open class TApplication {
             if let menuBar = menuBar {
                 menuBar.frame = Rect(x: 0, y: 0, width: cols, height: 1)
             }
+            for view in desktop.subviews {
+                if let statusLine = view as? TStatusLine {
+                    statusLine.frame = Rect(x: 0, y: rows - 1, width: cols, height: 1)
+                }
+            }
             redraw()
         }
     }
