@@ -289,7 +289,7 @@ public class TDesktop: TView {
         guard frame.width >= 2, frame.height >= 2 else { return false }
         let cornerX = frame.x + frame.width - 1
         let cornerY = frame.y + frame.height - 1
-        return point.x >= cornerX - 1 && point.y >= cornerY - 1
+        return point.x == cornerX && point.y == cornerY
     }
     
     private func normalizeSubviewOrder() {

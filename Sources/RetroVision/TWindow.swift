@@ -130,18 +130,36 @@ public class TWindow: TView {
             )
         }
         
-        // Bottom border (only if no horizontal scrollbar)
-        if !showsHorizontalScrollBar, frame.width > 2 {
-            tui.drawLine(
-                fromRow: bottom,
-                fromColumn: left + 1,
-                toRow: bottom,
-                toColumn: right - 1,
-                character: "═",
-                attributes: [],
-                foregroundColor: borderFg,
-                backgroundColor: frameBg
-            )
+        // Bottom border (full if no scrollbar, otherwise only left segment)
+        if frame.width > 2 {
+            if !showsHorizontalScrollBar {
+                tui.drawLine(
+                    fromRow: bottom,
+                    fromColumn: left + 1,
+                    toRow: bottom,
+                    toColumn: right - 1,
+                    character: "═",
+                    attributes: [],
+                    foregroundColor: borderFg,
+                    backgroundColor: frameBg
+                )
+            } else {
+                let innerWidth = max(0, frame.width - 2)
+                let barWidth = horizontalScrollBarWidth(innerWidth: innerWidth)
+                let endX = left + max(1, innerWidth - barWidth)
+                if endX > left {
+                    tui.drawLine(
+                        fromRow: bottom,
+                        fromColumn: left + 1,
+                        toRow: bottom,
+                        toColumn: endX,
+                        character: "═",
+                        attributes: [],
+                        foregroundColor: borderFg,
+                        backgroundColor: frameBg
+                    )
+                }
+            }
         }
         
         // Left border (always)
@@ -277,13 +295,18 @@ public class TWindow: TView {
         }
         
         if let horizontal = horizontalScrollBar, showsHorizontalScrollBar {
+            let barWidth = horizontalScrollBarWidth(innerWidth: innerWidth)
             horizontal.frame = Rect(
-                x: 1,
+                x: 1 + max(0, innerWidth - barWidth),
                 y: frame.height - 1,
-                width: innerWidth,
+                width: barWidth,
                 height: 1
             )
         }
+    }
+    
+    private func horizontalScrollBarWidth(innerWidth: Int) -> Int {
+        max(1, innerWidth / 2)
     }
 }
 

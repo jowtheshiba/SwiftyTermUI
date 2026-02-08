@@ -48,23 +48,19 @@ struct RetroDemo {
         let menuBar = TMenuBar(frame: Rect(x: 0, y: 0, width: cols, height: 1), menus: [fileMenu, editMenu, windowMenu])
         app.menuBar = menuBar
         
-        // Create Editor Window (Blue)
-        let editorWindow = TWindow(frame: Rect(x: 5, y: 3, width: 50, height: 15), title: "Editor Window", style: .window)
-        editorWindow.showsVerticalScrollBar = true
-        editorWindow.showsHorizontalScrollBar = true
-        editorWindow.onDrawContent = { content in
-            guard content.width >= 10, content.height > 0 else { return }
-            let tui = SwiftyTermUI.shared
-            let text = "Canvas"
-            tui.drawString(
-                row: content.y + max(0, content.height - 1),
-                column: content.x + 1,
-                text: text,
-                attributes: [],
-                foregroundColor: .white,
-                backgroundColor: .blue
-            )
-        }
+        // Create Edit Window (Blue)
+        let editorText = """
+        RetroVision editor demo
+        This is a multi-line text buffer.
+        You can edit text, move the cursor,
+        and scroll both horizontally and vertically.
+        
+        Line 6: The quick brown fox jumps over the lazy dog.
+        Line 7: 0123456789 0123456789 0123456789 0123456789
+        Line 8: A very long line to force horizontal scrolling:
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        """
+        let editWindow = TEditWindow(frame: Rect(x: 5, y: 3, width: 50, height: 15), title: "Edit Window", text: editorText)
         
         // Create Controls Window (Grey)
         let controlsWindow = TDialog(frame: Rect(x: 7, y: 6, width: 50, height: 16), title: "Controls")
@@ -106,7 +102,7 @@ struct RetroDemo {
         
         controlsWindow.addSubview(okButton)
         controlsWindow.addSubview(cancelButton)
-        app.desktop.addSubview(editorWindow)
+        app.desktop.addSubview(editWindow)
         app.desktop.addSubview(controlsWindow)
         
         // Create Dialog Window (Grey)

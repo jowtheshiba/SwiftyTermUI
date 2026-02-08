@@ -142,15 +142,41 @@ public class TScrollBar: TView {
     
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) {
-        guard event.action == .down, event.button == .left else { return }
+        guard event.button == .left else { return }
         guard bounds.contains(event.position) else { return }
         RetroTextUtils.focus(view: self)
         
         switch orientation {
         case .vertical:
-            handleVerticalClick(event.position.y)
+            let height = frame.height
+            if height > 0 {
+                if event.position.y == 0 {
+                    value -= 1
+                    return
+                }
+                if event.position.y == height - 1 {
+                    value += 1
+                    return
+                }
+            }
+            if event.action == .down || event.action == .drag {
+                handleVerticalDrag(event.position.y)
+            }
         case .horizontal:
-            handleHorizontalClick(event.position.x)
+            let width = frame.width
+            if width > 0 {
+                if event.position.x == 0 {
+                    value -= 1
+                    return
+                }
+                if event.position.x == width - 1 {
+                    value += 1
+                    return
+                }
+            }
+            if event.action == .down || event.action == .drag {
+                handleHorizontalDrag(event.position.x)
+            }
         }
     }
     
@@ -220,7 +246,7 @@ public class TScrollBar: TView {
         }
         
         let trackHeight = max(1, height - 2)
-        let thumbInfo = verticalThumb(trackHeight: trackHeight)
+        let thumbInfo = verticalThumb(trackHeight: trackHeight, forceSingle: glyphs.thumb == "▪")
         let thumbStart = 1 + thumbInfo.position
         let thumbEnd = thumbStart + thumbInfo.size - 1
         
@@ -233,6 +259,15 @@ public class TScrollBar: TView {
             let target = Int((Double(relative) / Double(max(1, trackHeight - 1))) * Double(maxValue()))
             value = target
         }
+    }
+    
+    private func handleVerticalDrag(_ localY: Int) {
+        let height = frame.height
+        if height <= 2 { return }
+        let trackHeight = max(1, height - 2)
+        let relative = max(0, min(trackHeight - 1, localY - 1))
+        let target = Int((Double(relative) / Double(max(1, trackHeight - 1))) * Double(maxValue()))
+        value = target
     }
     
     private func handleHorizontalClick(_ localX: Int) {
@@ -248,7 +283,7 @@ public class TScrollBar: TView {
         }
         
         let trackWidth = max(1, width - 2)
-        let thumbInfo = horizontalThumb(trackWidth: trackWidth)
+        let thumbInfo = horizontalThumb(trackWidth: trackWidth, forceSingle: glyphs.thumb == "▪")
         let thumbStart = 1 + thumbInfo.position
         let thumbEnd = thumbStart + thumbInfo.size - 1
         
@@ -261,6 +296,15 @@ public class TScrollBar: TView {
             let target = Int((Double(relative) / Double(max(1, trackWidth - 1))) * Double(maxValue()))
             value = target
         }
+    }
+    
+    private func handleHorizontalDrag(_ localX: Int) {
+        let width = frame.width
+        if width <= 2 { return }
+        let trackWidth = max(1, width - 2)
+        let relative = max(0, min(trackWidth - 1, localX - 1))
+        let target = Int((Double(relative) / Double(max(1, trackWidth - 1))) * Double(maxValue()))
+        value = target
     }
     
     @MainActor
@@ -298,7 +342,7 @@ public class TScrollBar: TView {
         
         if height <= 2 { return }
         let trackHeight = height - 2
-        let thumbInfo = verticalThumb(trackHeight: trackHeight)
+        let thumbInfo = verticalThumb(trackHeight: trackHeight, forceSingle: glyphs.thumb == "▪")
         
         for i in 0..<trackHeight {
             let row = origin.y + 1 + i
@@ -349,7 +393,7 @@ public class TScrollBar: TView {
         
         if width <= 2 { return }
         let trackWidth = width - 2
-        let thumbInfo = horizontalThumb(trackWidth: trackWidth)
+        let thumbInfo = horizontalThumb(trackWidth: trackWidth, forceSingle: glyphs.thumb == "▪")
         
         for i in 0..<trackWidth {
             let column = origin.x + 1 + i
@@ -365,25 +409,25 @@ public class TScrollBar: TView {
         }
     }
     
-    private func verticalThumb(trackHeight: Int) -> (position: Int, size: Int) {
+    private func verticalThumb(trackHeight: Int, forceSingle: Bool) -> (position: Int, size: Int) {
         let total = max(1, totalItems)
         let page = max(1, pageSize)
         if maxValue() == 0 {
             return (0, 0)
         }
-        let thumbSize = max(1, Int(Double(page) / Double(total) * Double(trackHeight)))
+        let thumbSize = forceSingle ? 1 : max(1, Int(Double(page) / Double(total) * Double(trackHeight)))
         let maxPos = max(0, trackHeight - thumbSize)
         let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
         return (max(0, min(pos, maxPos)), min(trackHeight, thumbSize))
     }
     
-    private func horizontalThumb(trackWidth: Int) -> (position: Int, size: Int) {
+    private func horizontalThumb(trackWidth: Int, forceSingle: Bool) -> (position: Int, size: Int) {
         let total = max(1, totalItems)
         let page = max(1, pageSize)
         if maxValue() == 0 {
             return (0, 0)
         }
-        let thumbSize = max(1, Int(Double(page) / Double(total) * Double(trackWidth)))
+        let thumbSize = forceSingle ? 1 : max(1, Int(Double(page) / Double(total) * Double(trackWidth)))
         let maxPos = max(0, trackWidth - thumbSize)
         let pos = Int((Double(value) / Double(maxValue())) * Double(maxPos))
         return (max(0, min(pos, maxPos)), min(trackWidth, thumbSize))
