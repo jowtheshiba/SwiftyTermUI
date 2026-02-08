@@ -199,11 +199,13 @@ public class TMemo: TView {
         let splitIndex = line.index(line.startIndex, offsetBy: min(cursorColumn, line.count))
         let left = String(line[..<splitIndex])
         let right = String(line[splitIndex...])
-        lines[row] = left
-        lines.insert(right, at: row + 1)
-        cursorRow += 1
+        // Batch mutations to avoid intermediate didSet → clampCursor
+        var newLines = lines
+        newLines[row] = left
+        newLines.insert(right, at: row + 1)
+        cursorRow = row + 1
         cursorColumn = 0
-        clampCursor()
+        lines = newLines
     }
     
     private func deleteCharBeforeCursor() {
@@ -216,13 +218,16 @@ public class TMemo: TView {
             cursorColumn = deleteAt
             lines[row] = line
         } else if cursorRow > 0 {
+            // Batch mutations to avoid intermediate didSet → clampCursor
             let prevRow = cursorRow - 1
             let prevLineLength = lines[prevRow].count
             let merged = lines[prevRow] + lines[cursorRow]
+            var newLines = lines
+            newLines[prevRow] = merged
+            newLines.remove(at: prevRow + 1)
             cursorRow = prevRow
             cursorColumn = prevLineLength
-            lines[prevRow] = merged
-            lines.remove(at: prevRow + 1)
+            lines = newLines
         }
         clampCursor()
     }
@@ -235,8 +240,11 @@ public class TMemo: TView {
             line.remove(at: index)
             lines[row] = line
         } else if row < lines.count - 1 {
-            lines[row] = line + lines[row + 1]
-            lines.remove(at: row + 1)
+            // Batch mutations to avoid intermediate didSet → clampCursor
+            var newLines = lines
+            newLines[row] = line + newLines[row + 1]
+            newLines.remove(at: row + 1)
+            lines = newLines
         }
         clampCursor()
     }
