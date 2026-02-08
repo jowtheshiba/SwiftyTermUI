@@ -210,17 +210,19 @@ public class TMemo: TView {
         if cursorColumn > 0 {
             let row = max(0, min(lines.count - 1, cursorRow))
             var line = lines[row]
-            let index = line.index(line.startIndex, offsetBy: cursorColumn - 1)
+            let deleteAt = cursorColumn - 1
+            let index = line.index(line.startIndex, offsetBy: deleteAt)
             line.remove(at: index)
+            cursorColumn = deleteAt
             lines[row] = line
-            cursorColumn -= 1
         } else if cursorRow > 0 {
             let prevRow = cursorRow - 1
+            let prevLineLength = lines[prevRow].count
             let merged = lines[prevRow] + lines[cursorRow]
-            lines[prevRow] = merged
-            lines.remove(at: cursorRow)
             cursorRow = prevRow
-            cursorColumn = lines[prevRow].count
+            cursorColumn = prevLineLength
+            lines[prevRow] = merged
+            lines.remove(at: prevRow + 1)
         }
         clampCursor()
     }
