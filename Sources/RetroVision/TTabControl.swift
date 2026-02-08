@@ -213,11 +213,18 @@ public class TTabControl: TView {
             let cornerL = pos.x - 1
             let cornerR = pos.x + pos.width
             
-            // ╝ — left junction
+            // ╝ — left junction (or ║ when tab meets the frame edge)
             if cornerL > 0 && cornerL < lastCol {
                 tui.drawChar(
                     row: origin.y + 2, column: origin.x + cornerL,
                     character: "╝", attributes: [],
+                    foregroundColor: borderFg, backgroundColor: contentBg
+                )
+            } else if cornerL == 0 {
+                // Tab's left wall merges with the frame's left border
+                tui.drawChar(
+                    row: origin.y + 2, column: origin.x,
+                    character: "║", attributes: [],
                     foregroundColor: borderFg, backgroundColor: contentBg
                 )
             }
@@ -231,11 +238,18 @@ public class TTabControl: TView {
                     foregroundColor: contentFg, backgroundColor: contentBg
                 )
             }
-            // ╚ — right junction
+            // ╚ — right junction (or ║ when tab meets the frame edge)
             if cornerR > 0 && cornerR < lastCol {
                 tui.drawChar(
                     row: origin.y + 2, column: origin.x + cornerR,
                     character: "╚", attributes: [],
+                    foregroundColor: borderFg, backgroundColor: contentBg
+                )
+            } else if cornerR == lastCol {
+                // Tab's right wall merges with the frame's right border
+                tui.drawChar(
+                    row: origin.y + 2, column: origin.x + cornerR,
+                    character: "║", attributes: [],
                     foregroundColor: borderFg, backgroundColor: contentBg
                 )
             }

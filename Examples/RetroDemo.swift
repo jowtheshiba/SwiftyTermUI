@@ -178,9 +178,37 @@ struct RetroDemo {
         aboutTab.addSubview(aboutText)
         aboutTab.addSubview(aboutButton)
         
+        // Tab 4: Progress
+        let progressTab = TTab(title: "Progress")
+        let progressLabel = TStaticText(
+            frame: Rect(x: 2, y: 1, width: 30, height: 1),
+            text: "Download progress:"
+        )
+        let progressBar = TProgressBar(
+            frame: Rect(x: 2, y: 2, width: 36, height: 3),
+            value: 42,
+            maxValue: 100
+        )
+        progressBar.palette = .dialog
+        let progressLabel2 = TStaticText(
+            frame: Rect(x: 2, y: 5, width: 30, height: 1),
+            text: "Build progress:"
+        )
+        let progressBar2 = TProgressBar(
+            frame: Rect(x: 2, y: 6, width: 36, height: 3),
+            value: 87,
+            maxValue: 100
+        )
+        progressBar2.palette = .dialog
+        progressTab.addSubview(progressLabel)
+        progressTab.addSubview(progressBar)
+        progressTab.addSubview(progressLabel2)
+        progressTab.addSubview(progressBar2)
+        
         tabControl.addTab(generalTab)
         tabControl.addTab(themeTab)
         tabControl.addTab(aboutTab)
+        tabControl.addTab(progressTab)
         
         tabDemoWindow.addSubview(tabControl)
         app.desktop.addSubview(tabDemoWindow)
