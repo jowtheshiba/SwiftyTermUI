@@ -141,9 +141,10 @@ public class TInputLine: TView {
     
     private func deleteCharBeforeCursor() {
         guard cursorPosition > 0 else { return }
-        let index = text.index(text.startIndex, offsetBy: cursorPosition - 1)
+        let deleteAt = cursorPosition - 1
+        let index = text.index(text.startIndex, offsetBy: deleteAt)
+        cursorPosition = deleteAt
         text.remove(at: index)
-        cursorPosition = max(0, cursorPosition - 1)
         clampCursor()
     }
     
@@ -166,6 +167,10 @@ public class TInputLine: TView {
         } else if cursorPosition >= scrollOffset + width {
             scrollOffset = max(0, cursorPosition - width + 1)
         }
+        // Don't scroll past the end of text — avoid showing blank space
+        // while the actual text is hidden off the left edge
+        let maxScroll = max(0, text.count - width + 1)
+        scrollOffset = max(0, min(scrollOffset, maxScroll))
     }
     
     private func visibleSlice(text: String, width: Int) -> String {
