@@ -130,6 +130,61 @@ struct RetroDemo {
         dialogWindow.addSubview(replaceButton)
         app.desktop.addSubview(dialogWindow)
         
+        // Create Tab Demo Window (Grey)
+        let tabDemoWindow = TDialog(frame: Rect(x: 25, y: 2, width: 46, height: 17), title: "Tab Demo")
+        
+        let tabControl = TTabControl(frame: Rect(x: 1, y: 2, width: 44, height: 13))
+        
+        // Tab 1: General settings
+        let generalTab = TTab(title: "General")
+        let settingsLabel = TStaticText(
+            frame: Rect(x: 2, y: 1, width: 30, height: 1),
+            text: "Editor settings:"
+        )
+        let autoSaveCheck = TCheckBox(frame: Rect(x: 2, y: 3, width: 30, height: 1), title: "Auto-save", isChecked: true)
+        let lineNumCheck = TCheckBox(frame: Rect(x: 2, y: 4, width: 30, height: 1), title: "Show line numbers")
+        let wordWrapCheck = TCheckBox(frame: Rect(x: 2, y: 5, width: 30, height: 1), title: "Word wrap", isChecked: true)
+        let tabSizeCheck = TCheckBox(frame: Rect(x: 2, y: 6, width: 30, height: 1), title: "Use tabs (not spaces)")
+        generalTab.addSubview(settingsLabel)
+        generalTab.addSubview(autoSaveCheck)
+        generalTab.addSubview(lineNumCheck)
+        generalTab.addSubview(wordWrapCheck)
+        generalTab.addSubview(tabSizeCheck)
+        
+        // Tab 2: Theme settings
+        let themeTab = TTab(title: "Colors")
+        let themeLabel = TStaticText(
+            frame: Rect(x: 2, y: 1, width: 20, height: 1),
+            text: "Select theme:"
+        )
+        let lightRadio2 = TRadioBox(frame: Rect(x: 2, y: 3, width: 22, height: 1), title: "Light", groupID: "tabtheme", isSelected: true)
+        let darkRadio2 = TRadioBox(frame: Rect(x: 2, y: 4, width: 22, height: 1), title: "Dark", groupID: "tabtheme")
+        let solarizedRadio = TRadioBox(frame: Rect(x: 2, y: 5, width: 22, height: 1), title: "Solarized", groupID: "tabtheme")
+        let monoRadio = TRadioBox(frame: Rect(x: 2, y: 6, width: 22, height: 1), title: "Monochrome", groupID: "tabtheme")
+        themeTab.addSubview(themeLabel)
+        themeTab.addSubview(lightRadio2)
+        themeTab.addSubview(darkRadio2)
+        themeTab.addSubview(solarizedRadio)
+        themeTab.addSubview(monoRadio)
+        
+        // Tab 3: About
+        let aboutTab = TTab(title: "About")
+        let aboutText = TStaticText(
+            frame: Rect(x: 2, y: 1, width: 38, height: 5),
+            text: "RetroVision TUI Framework\nVersion 1.0\n\nA classic Turbo Vision-style\ntext user interface for Swift."
+        )
+        let aboutButton = TButton(frame: Rect(x: 14, y: 7, width: 14, height: 1), title: "OK") {
+        }
+        aboutTab.addSubview(aboutText)
+        aboutTab.addSubview(aboutButton)
+        
+        tabControl.addTab(generalTab)
+        tabControl.addTab(themeTab)
+        tabControl.addTab(aboutTab)
+        
+        tabDemoWindow.addSubview(tabControl)
+        app.desktop.addSubview(tabDemoWindow)
+        
         let statusLine = TStatusLine(
             frame: Rect(x: 0, y: rows - 1, width: cols, height: 1),
             items: [
