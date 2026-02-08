@@ -168,11 +168,9 @@ public final class InputHandler: NSObject {
             }
         }
 
-        // If it's a regular character, return immediately
-        if buffer.count == 1, let first = buffer.first, let ascii = first.asciiValue, ascii >= 32 && ascii < 127 {
-            let char = Character(UnicodeScalar(ascii))
-            buffer.removeAll()
-            return .keyPress(.character(char))
+        // If it's a regular character (including UTF-8), return immediately
+        if !buffer.hasPrefix("\u{1B}"), let ch = decodeUtf8CharFromBuffer() {
+            return .keyPress(.character(ch))
         }
 
         return nil
@@ -348,6 +346,61 @@ public final class InputHandler: NSObject {
         }
         
         return events
+    }
+    
+    /// Decodes the first UTF-8 character from buffer, if complete
+    private func decodeUtf8CharFromBuffer() -> Character? {
+        let scalars = buffer.unicodeScalars
+        guard !scalars.isEmpty else { return nil }
+        
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(scalars.count)
+        for scalar in scalars {
+            let value = scalar.value
+            guard value <= 0xFF else { return nil }
+            bytes.append(UInt8(value))
+        }
+        
+        let first = bytes[0]
+        let expectedLength: Int
+        if first <= 0x7F {
+            expectedLength = 1
+        } else if first >= 0xC2 && first <= 0xDF {
+            expectedLength = 2
+        } else if first >= 0xE0 && first <= 0xEF {
+            expectedLength = 3
+        } else if first >= 0xF0 && first <= 0xF4 {
+            expectedLength = 4
+        } else {
+            removeBytesFromBuffer(count: 1)
+            return nil
+        }
+        
+        if bytes.count < expectedLength {
+            return nil
+        }
+        
+        if expectedLength > 1 {
+            for i in 1..<expectedLength {
+                if bytes[i] < 0x80 || bytes[i] > 0xBF {
+                    removeBytesFromBuffer(count: 1)
+                    return nil
+                }
+            }
+        }
+        
+        let slice = bytes[0..<expectedLength]
+        let string = String(decoding: slice, as: UTF8.self)
+        guard let ch = string.first else { return nil }
+        removeBytesFromBuffer(count: expectedLength)
+        return ch
+    }
+    
+    private func removeBytesFromBuffer(count: Int) {
+        let scalars = buffer.unicodeScalars
+        guard count > 0, scalars.count >= count else { return }
+        let endIndex = scalars.index(scalars.startIndex, offsetBy: count)
+        buffer.removeSubrange(scalars.startIndex..<endIndex)
     }
     
     /// Decodes CSI < ... mouse sequence (SGR mode)
