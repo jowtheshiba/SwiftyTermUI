@@ -37,7 +37,25 @@ public class TMemo: TView {
         self.cursorRow = 0
         self.cursorColumn = 0
         super.init(frame: frame)
+        contextMenu = { [weak self] in
+            guard let self else { return [] }
+            return [
+                TMenuItem(title: "Cut", action: { self.cutSelection() }),
+                TMenuItem(title: "Copy", action: { self.copySelection() }),
+                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }),
+                TMenuItem.separator,
+                TMenuItem(title: "Clear", action: { self.deleteSelection() })
+            ]
+        }
         clampCursor()
+    }
+    
+    @MainActor
+    public override func preferredContextMenuPosition() -> Point {
+        let localX = min(frame.width - 1, max(0, cursorColumn - scrollOffsetX))
+        var localY = min(frame.height - 1, max(0, cursorRow - scrollOffsetY))
+        if localY + 1 < frame.height { localY += 1 }
+        return localToGlobal(Point(x: localX, y: localY))
     }
     
     @MainActor

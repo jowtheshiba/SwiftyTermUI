@@ -168,6 +168,18 @@ open class TView {
         root.bringSubviewToFront(menu)
         RetroTextUtils.focus(view: menu)
     }
+    
+    @MainActor
+    open func preferredContextMenuPosition() -> Point {
+        localToGlobal(Point(x: 0, y: 0))
+    }
+    
+    @MainActor
+    public func showContextMenuFromKeyboard() {
+        guard let items = contextMenu?(), !items.isEmpty else { return }
+        let position = preferredContextMenuPosition()
+        showContextMenu(at: position, items: items)
+    }
 }
 
 public struct Rect: Equatable, Sendable {

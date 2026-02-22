@@ -116,6 +116,12 @@ open class TApplication {
                 return
             }
             
+            if key == .shiftF10, let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
+                focused.showContextMenuFromKeyboard()
+                needsFullRedraw = true
+                return
+            }
+            
             let tEvent = TEvent.key(key)
             if let menuBar = menuBar {
                 menuBar.handleEvent(tEvent)

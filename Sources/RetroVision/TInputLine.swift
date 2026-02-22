@@ -25,7 +25,26 @@ public class TInputLine: TView {
         self.isPassword = isPassword
         self.cursorPosition = cursorPosition
         super.init(frame: frame)
+        contextMenu = { [weak self] in
+            guard let self else { return [] }
+            return [
+                TMenuItem(title: "Cut", action: { self.cutSelection() }),
+                TMenuItem(title: "Copy", action: { self.copySelection() }),
+                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }),
+                TMenuItem.separator,
+                TMenuItem(title: "Clear", action: { self.deleteSelection() })
+            ]
+        }
         clampCursor()
+    }
+    
+    @MainActor
+    public override func preferredContextMenuPosition() -> Point {
+        let row = (frame.height - 1) / 2
+        let localX = min(frame.width - 1, max(0, cursorPosition - scrollOffset))
+        var menuY = row + 1
+        if menuY >= frame.height { menuY = max(0, row - 1) }
+        return localToGlobal(Point(x: localX, y: menuY))
     }
     
     @MainActor

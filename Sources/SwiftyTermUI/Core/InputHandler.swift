@@ -40,6 +40,7 @@ public enum Key: Equatable {
     // MARK: - Function keys
 
     case f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12
+    case shiftF10
 
     // MARK: - Control combinations
 
@@ -319,6 +320,7 @@ public final class InputHandler: NSObject {
         ("\u{1B}[18~", .f7),
         ("\u{1B}[19~", .f8),
         ("\u{1B}[20~", .f9),
+        ("\u{1B}[21;2~", .shiftF10),
         ("\u{1B}[21~", .f10),
         ("\u{1B}[23~", .f11),
         ("\u{1B}[24~", .f12)

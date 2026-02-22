@@ -25,7 +25,7 @@ public class TTabControl: TView {
     public let headerHeight: Int = 3
     
     /// Indent before the first tab label.
-    private let tabIndent: Int = 3
+    private let tabIndent: Int = 1
     
     /// Gap between consecutive tab slots.
     private let tabGap: Int = 2
@@ -67,12 +67,39 @@ public class TTabControl: TView {
     
     private func computeTabPositions() -> [TabPos] {
         var positions: [TabPos] = []
-        var x = tabIndent
-        for tab in tabs {
-            let label = " \(tab.title) "
-            positions.append(TabPos(x: x, width: label.count))
-            x += label.count + tabGap
+        guard !tabs.isEmpty else { return positions }
+        
+        let availableWidth = max(0, frame.width - 2)
+        let totalTitleWidth = tabs.reduce(0) { $0 + " \($1.title) ".count }
+        let gapCount = max(1, tabs.count - 1)
+        
+        // If they exceed available width or there's only 1 tab, use a fixed gap
+        if totalTitleWidth >= availableWidth || tabs.count == 1 {
+            var x = tabIndent
+            for tab in tabs {
+                let label = " \(tab.title) "
+                let w = label.count
+                positions.append(TabPos(x: x, width: w))
+                x += w + tabGap
+            }
+            return positions
         }
+        
+        // Distribute extra space evenly between tabs
+        let extraSpace = availableWidth - totalTitleWidth
+        let baseGap = extraSpace / gapCount
+        let remainder = extraSpace % gapCount
+        
+        var x = 1 // Start at the left edge (cornerL = 0)
+        for (index, tab) in tabs.enumerated() {
+            let label = " \(tab.title) "
+            let w = label.count
+            positions.append(TabPos(x: x, width: w))
+            // The last tab doesn't have a gap after it
+            let currentGap = index < gapCount ? baseGap + (index < remainder ? 1 : 0) : 0
+            x += w + currentGap
+        }
+        
         return positions
     }
     
