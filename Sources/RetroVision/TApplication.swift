@@ -93,6 +93,23 @@ open class TApplication {
     @MainActor
     private func handleLowLevelEvent(_ event: InputEvent, needsFullRedraw: inout Bool) {
         switch event {
+        case .paste(let text):
+            let tEvent = TEvent.paste(text)
+            if let menuBar = menuBar {
+                menuBar.handleEvent(tEvent)
+            }
+            
+            desktop.handleEvent(tEvent)
+            
+            if let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
+                resetInputBlink()
+                needsFullRedraw = false
+                focused.draw()
+                try? SwiftyTermUI.shared.refresh()
+            } else {
+                needsFullRedraw = true
+            }
+            
         case .keyPress(let key):
             if key == .ctrl("c") {
                 isRunning = false

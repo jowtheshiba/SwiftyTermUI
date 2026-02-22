@@ -32,8 +32,8 @@ public final class TerminalManager {
 
         var newTermios = originalTermios
 
-        // Disable canonical mode and echo
-        newTermios.c_lflag &= ~(UInt(ICANON) | UInt(ECHO))
+        // Disable canonical mode, echo, and signals (ISIG allows capturing Ctrl+C)
+        newTermios.c_lflag &= ~(UInt(ICANON) | UInt(ECHO) | UInt(ISIG))
         newTermios.c_cc.16 = 0 // VMIN  — index 16 on macOS/Darwin
         newTermios.c_cc.17 = 0 // VTIME — index 17 on macOS/Darwin
 
@@ -51,8 +51,8 @@ public final class TerminalManager {
             )
         })
 
-        // Hide cursor (no need to buffer during init)
-        if let data = "\u{1B}[?25l".data(using: .utf8) {
+        // Hide cursor and enable bracketed paste
+        if let data = "\u{1B}[?25l\u{1B}[?2004h".data(using: .utf8) {
             FileHandle.standardOutput.write(data)
         }
     }
@@ -70,8 +70,8 @@ public final class TerminalManager {
             isMouseTrackingEnabled = false
         }
         
-        // Show cursor
-        writeBuffer.append("\u{1B}[?25h")
+        // Show cursor and disable bracketed paste
+        writeBuffer.append("\u{1B}[?25h\u{1B}[?2004l")
 
         // Clear screen and return cursor to home position
         writeBuffer.append("\u{1B}[2J\u{1B}[H")

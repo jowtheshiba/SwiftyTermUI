@@ -61,6 +61,20 @@ struct InputExample {
                         keyDescription = "Arrow left ←"
                     case .right:
                         keyDescription = "Arrow right →"
+                    case .shiftUp:
+                        keyDescription = "Shift+Up"
+                    case .shiftDown:
+                        keyDescription = "Shift+Down"
+                    case .shiftLeft:
+                        keyDescription = "Shift+Left"
+                    case .shiftRight:
+                        keyDescription = "Shift+Right"
+                    case .shiftDelete:
+                        keyDescription = "Shift+Delete"
+                    case .shiftInsert:
+                        keyDescription = "Shift+Insert"
+                    case .ctrlInsert:
+                        keyDescription = "Ctrl+Insert"
                     case .f1:
                         keyDescription = "F1"
                     case .f2:
@@ -107,6 +121,9 @@ struct InputExample {
                         
                         try tui.refresh()
                     }
+                    
+                case .paste:
+                    break
                     
                 case .mouse:
                     break

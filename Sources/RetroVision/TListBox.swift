@@ -81,9 +81,9 @@ public class TListBox: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
-        guard event.action == .down, event.button == .left else { return }
-        guard bounds.contains(event.position) else { return }
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
+        guard event.action == .down, event.button == .left else { return false }
+        guard bounds.contains(event.position) else { return false }
         RetroTextUtils.focus(view: self)
         
         let row = max(0, min(frame.height - 1, event.position.y))
@@ -93,6 +93,7 @@ public class TListBox: TView {
             ensureSelectionVisible()
             syncScrollBar()
         }
+        return true
     }
     
     // MARK: - Private

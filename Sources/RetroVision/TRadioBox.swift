@@ -80,22 +80,25 @@ public class TRadioBox: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         switch event.action {
         case .down where event.button == .left:
             if bounds.contains(event.position) {
                 isMouseDownInside = true
                 RetroTextUtils.focus(view: self)
+                return true
             }
         case .up where event.button == .left:
             let shouldSelect = isMouseDownInside && bounds.contains(event.position)
             isMouseDownInside = false
             if shouldSelect {
                 select()
+                return true
             }
         default:
             break
         }
+        return false
     }
     
     private func select() {

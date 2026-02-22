@@ -141,9 +141,9 @@ public class TScrollBar: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
-        guard event.button == .left else { return }
-        guard bounds.contains(event.position) else { return }
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
+        guard event.button == .left else { return false }
+        guard bounds.contains(event.position) else { return false }
         RetroTextUtils.focus(view: self)
         
         switch orientation {
@@ -152,32 +152,35 @@ public class TScrollBar: TView {
             if height > 0 {
                 if event.position.y == 0 {
                     value -= 1
-                    return
+                    return true
                 }
                 if event.position.y == height - 1 {
                     value += 1
-                    return
+                    return true
                 }
             }
             if event.action == .down || event.action == .drag {
                 handleVerticalDrag(event.position.y)
+                return true
             }
         case .horizontal:
             let width = frame.width
             if width > 0 {
                 if event.position.x == 0 {
                     value -= 1
-                    return
+                    return true
                 }
                 if event.position.x == width - 1 {
                     value += 1
-                    return
+                    return true
                 }
             }
             if event.action == .down || event.action == .drag {
                 handleHorizontalDrag(event.position.x)
+                return true
             }
         }
+        return false
     }
     
     // MARK: - Private

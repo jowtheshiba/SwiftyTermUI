@@ -1,6 +1,6 @@
 import SwiftyTermUI
 
-/// Editor window with embedded memo and scrollbars
+@MainActor
 public final class TEditWindow: TWindow {
     public let memo: TMemo
     

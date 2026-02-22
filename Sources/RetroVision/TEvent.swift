@@ -4,6 +4,7 @@ import SwiftyTermUI
 public enum TEvent {
     case key(Key)
     case mouse(MouseEvent)
+    case paste(String)
     case command(Command)
     case nothing
     

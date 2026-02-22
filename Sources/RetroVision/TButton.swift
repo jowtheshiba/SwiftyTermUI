@@ -168,16 +168,19 @@ public class TButton: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         switch event.action {
         case .down where event.button == .left:
             isPressed = true
             isMouseDownInside = true
+            return true
             
         case .drag where event.button == .left:
             if isMouseDownInside {
                 isPressed = bounds.contains(event.position)
+                return true
             }
+            return false
             
         case .up where event.button == .left:
             let shouldTrigger = isMouseDownInside && bounds.contains(event.position)
@@ -191,9 +194,10 @@ public class TButton: TView {
             } else {
                 isPressed = false
             }
+            return true
             
         default:
-            break
+            return false
         }
     }
     

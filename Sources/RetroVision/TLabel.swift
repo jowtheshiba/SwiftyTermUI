@@ -77,11 +77,13 @@ public class TLabel: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
-        guard event.action == .down, event.button == .left else { return }
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
+        guard event.action == .down, event.button == .left else { return false }
         if bounds.contains(event.position) {
             activateTarget()
+            return true
         }
+        return false
     }
     
     // MARK: - Private

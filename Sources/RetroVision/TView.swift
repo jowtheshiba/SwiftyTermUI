@@ -14,8 +14,10 @@ open class TView {
     public weak var superview: TView?
     public var subviews: [TView] = []
     
+    
     public var isVisible: Bool = true
     public var isFocused: Bool = false
+    public var contextMenu: (() -> [TMenuItem])?
     
     public init(frame: Rect) {
         self.frame = frame
@@ -73,16 +75,23 @@ open class TView {
             }
         }
         
-        // For the mouseEvent callback, provide LOCAL coordinates for convenience
         var localizedEvent = event
         localizedEvent.position = globalToLocal(event.position)
-        mouseEvent(localizedEvent)
-        return false // Event not handled
+        
+        if event.action == .down && event.button == .right {
+            if let items = self.contextMenu?(), !items.isEmpty {
+                showContextMenu(at: event.position, items: items)
+                return true
+            }
+        }
+        
+        return mouseEvent(localizedEvent)
     }
     
     @MainActor
-    open func mouseEvent(_ event: TEvent.MouseEvent) {
+    open func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         // Subclasses can override to handle pointer interactions
+        return false
     }
     
     /// Converts a point from local coordinates to global screen coordinates
@@ -144,6 +153,20 @@ open class TView {
         guard let index = subviews.firstIndex(where: { $0 === view }) else { return }
         subviews.remove(at: index)
         subviews.insert(view, at: 0)
+    }
+    
+    @MainActor
+    public func showContextMenu(at position: Point, items: [TMenuItem]) {
+        let menu = TPopupMenu(position: position, items: items)
+        
+        var root: TView = self
+        while let parent = root.superview {
+            root = parent
+        }
+        
+        root.addSubview(menu)
+        root.bringSubviewToFront(menu)
+        RetroTextUtils.focus(view: menu)
     }
 }
 

@@ -4,6 +4,7 @@ import SwiftyTermUI
 
 @main
 struct RetroDemo {
+    @MainActor
     static func main() {
         let app = TApplication.shared
         
@@ -14,6 +15,7 @@ struct RetroDemo {
             TMenuItem(title: "Save", action: {}, shortcut: "F2"),
             TMenuItem.separator,
             TMenuItem(title: "Exit", action: { 
+                SwiftyTermUI.shared.shutdown()
                 exit(0)
             }, shortcut: "Alt+X")
         ])
@@ -22,11 +24,23 @@ struct RetroDemo {
             TMenuItem(title: "Undo", action: {}, shortcut: "Alt+BkSp"),
             TMenuItem(title: "Redo", action: {}),
             TMenuItem.separator,
-            TMenuItem(title: "Cut", action: {}, shortcut: "Shift+Del"),
-            TMenuItem(title: "Copy", action: {}, shortcut: "Ctrl+Ins"),
-            TMenuItem(title: "Paste", action: {}, shortcut: "Shift+Ins"),
+            TMenuItem(title: "Cut", action: {
+                if let memo = app.desktop.findFocusedView() as? TMemo { memo.cutSelection() }
+                else if let input = app.desktop.findFocusedView() as? TInputLine { input.cutSelection() }
+            }, shortcut: "Shift+Del"),
+            TMenuItem(title: "Copy", action: {
+                if let memo = app.desktop.findFocusedView() as? TMemo { memo.copySelection() }
+                else if let input = app.desktop.findFocusedView() as? TInputLine { input.copySelection() }
+            }, shortcut: "Ctrl+Ins"),
+            TMenuItem(title: "Paste", action: {
+                if let memo = app.desktop.findFocusedView() as? TMemo { memo.pasteFromClipboard() }
+                else if let input = app.desktop.findFocusedView() as? TInputLine { input.pasteFromClipboard() }
+            }, shortcut: "Shift+Ins"),
             TMenuItem.separator,
-            TMenuItem(title: "Clear", action: {})
+            TMenuItem(title: "Clear", action: {
+                if let memo = app.desktop.findFocusedView() as? TMemo { memo.deleteSelection() }
+                else if let input = app.desktop.findFocusedView() as? TInputLine { input.deleteSelection() }
+            })
         ])
         
         let arrangeSubmenu = [
@@ -61,6 +75,12 @@ struct RetroDemo {
         Lorem ipsum dolor sit amet, consectetur adipiscing elit.
         """
         let editWindow = TEditWindow(frame: Rect(x: 5, y: 3, width: 50, height: 15), title: "Edit Window", text: editorText)
+        
+        editWindow.memo.contextMenu = { [
+            TMenuItem(title: "Cut", action: { editWindow.memo.cutSelection() }),
+            TMenuItem(title: "Copy", action: { editWindow.memo.copySelection() }),
+            TMenuItem(title: "Paste", action: { editWindow.memo.pasteFromClipboard() })
+        ] }
         
         // Create Controls Window (Grey)
         let controlsWindow = TDialog(frame: Rect(x: 7, y: 6, width: 50, height: 16), title: "Controls")
@@ -113,6 +133,13 @@ struct RetroDemo {
         let matchCaseLabel = TLabel(frame: Rect(x: 3, y: 2, width: 30, height: 1), text: "~Match case:", target: matchCaseBox)
         let findLabel = TLabel(frame: Rect(x: 3, y: 5, width: 8, height: 1), text: "~Find:", target: nil)
         let findInput = TInputLine(frame: Rect(x: 10, y: 5, width: 24, height: 1))
+        
+        findInput.contextMenu = { [
+            TMenuItem(title: "Cut", action: { findInput.cutSelection() }),
+            TMenuItem(title: "Copy", action: { findInput.copySelection() }),
+            TMenuItem(title: "Paste", action: { findInput.pasteFromClipboard() })
+        ] }
+        
         findLabel.target = findInput
         dialogWindow.addSubview(matchCaseLabel)
         dialogWindow.addSubview(matchCaseBox)

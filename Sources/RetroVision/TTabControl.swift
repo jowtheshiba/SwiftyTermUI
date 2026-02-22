@@ -313,12 +313,13 @@ public class TTabControl: TView {
     }
     
     @MainActor
-    public override func mouseEvent(_ event: TEvent.MouseEvent) {
+    public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         // Clicks on the header rows (0, 1, or 2) switch tabs
         if event.action == .down, event.button == .left,
            event.position.y >= 0, event.position.y <= 2 {
-            selectTabAtX(event.position.x)
+            return selectTabAtX(event.position.x)
         }
+        return false
     }
     
     // MARK: - Private
@@ -336,7 +337,7 @@ public class TTabControl: TView {
         }
     }
     
-    private func selectTabAtX(_ localX: Int) {
+    private func selectTabAtX(_ localX: Int) -> Bool {
         let positions = computeTabPositions()
         for (index, pos) in positions.enumerated() {
             // Hit area includes ║ walls on each side
@@ -344,8 +345,9 @@ public class TTabControl: TView {
             let hitEnd = pos.x + pos.width
             if localX >= hitStart && localX <= hitEnd {
                 activeTabIndex = index
-                return
+                return true
             }
         }
+        return false
     }
 }

@@ -5,6 +5,7 @@ import Foundation
 public enum InputEvent: Equatable {
     case keyPress(Key)
     case mouse(InputMouseEvent)
+    case paste(String)
     case terminalResize
 }
 
@@ -26,6 +27,15 @@ public enum Key: Equatable {
     case down
     case left
     case right
+    
+    // MARK: - Modifiers for Selection and Clipboard
+    case shiftUp
+    case shiftDown
+    case shiftLeft
+    case shiftRight
+    case shiftDelete
+    case shiftInsert
+    case ctrlInsert
 
     // MARK: - Function keys
 
@@ -95,6 +105,8 @@ public struct InputMouseEvent: Equatable, Sendable {
 @MainActor
 public final class InputHandler: NSObject {
     private var buffer = ""
+    private var isBracketedPaste = false
+    private var pasteBuffer = ""
     private let lock = NSLock()
     private let eventQueue = EventQueue()
     private let resizeNotification = NSNotification.Name("TerminalDidResize")
@@ -120,9 +132,9 @@ public final class InputHandler: NSObject {
         lock.lock()
         defer { lock.unlock() }
 
-        // Try to read available bytes from stdin (read up to 64 bytes to capture full mouse sequences)
-        var readBuffer = [UInt8](repeating: 0, count: 64)
-        let bytesRead = read(STDIN_FILENO, &readBuffer, 64)
+        // Try to read available bytes from stdin (read up to 4096 bytes to capture full mouse sequences and pastes)
+        var readBuffer = [UInt8](repeating: 0, count: 4096)
+        let bytesRead = read(STDIN_FILENO, &readBuffer, 4096)
 
         if bytesRead > 0 {
             // Add all read characters to the buffer
@@ -133,6 +145,36 @@ public final class InputHandler: NSObject {
             // Error reading (EAGAIN/EWOULDBLOCK in non-blocking mode is normal)
             let errno = Darwin.errno
             if errno != EAGAIN && errno != EWOULDBLOCK {
+            }
+        }
+        
+        // Handle Bracketed Paste Mode
+        if !isBracketedPaste && buffer.hasPrefix("\u{1B}[200~") {
+            isBracketedPaste = true
+            buffer.removeFirst(6)
+        }
+        
+        if isBracketedPaste {
+            if let endRange = buffer.range(of: "\u{1B}[201~") {
+                pasteBuffer += String(buffer[..<endRange.lowerBound])
+                buffer.removeSubrange(..<endRange.upperBound)
+                isBracketedPaste = false
+                
+                let textBytes = pasteBuffer.unicodeScalars.compactMap { $0.value <= 0xFF ? UInt8($0.value) : nil }
+                let text = String(decoding: textBytes, as: UTF8.self)
+                
+                pasteBuffer = ""
+                eventQueue.enqueue(.paste(text))
+                return eventQueue.dequeue()
+            } else {
+                if let lastEsc = buffer.lastIndex(of: "\u{1B}") {
+                    pasteBuffer += String(buffer[..<lastEsc])
+                    buffer.removeSubrange(..<lastEsc)
+                } else {
+                    pasteBuffer += buffer
+                    buffer.removeAll()
+                }
+                return nil
             }
         }
 
@@ -242,31 +284,71 @@ public final class InputHandler: NSObject {
         return result
     }
 
+    private let escapeSequences: [(String, Key)] = [
+        ("\u{1B}[A", .up),
+        ("\u{1B}[B", .down),
+        ("\u{1B}[C", .right),
+        ("\u{1B}[D", .left),
+        ("\u{1B}[H", .home),
+        ("\u{1B}[1~", .home),
+        ("\u{1B}OH", .home),
+        ("\u{1B}[F", .end),
+        ("\u{1B}[4~", .end),
+        ("\u{1B}OF", .end),
+        ("\u{1B}[2~", .insert),
+        ("\u{1B}[3~", .delete),
+        ("\u{1B}[5~", .pageUp),
+        ("\u{1B}[6~", .pageDown),
+        ("\u{1B}[1;2A", .shiftUp),
+        ("\u{1B}[1;2B", .shiftDown),
+        ("\u{1B}[1;2C", .shiftRight),
+        ("\u{1B}[1;2D", .shiftLeft),
+        ("\u{1B}[3;2~", .shiftDelete),
+        ("\u{1B}[2;2~", .shiftInsert),
+        ("\u{1B}[2;5~", .ctrlInsert),
+        ("\u{1B}OP", .f1),
+        ("\u{1B}OQ", .f2),
+        ("\u{1B}OR", .f3),
+        ("\u{1B}OS", .f4),
+        ("\u{1B}[11~", .f1),
+        ("\u{1B}[12~", .f2),
+        ("\u{1B}[13~", .f3),
+        ("\u{1B}[14~", .f4),
+        ("\u{1B}[15~", .f5),
+        ("\u{1B}[17~", .f6),
+        ("\u{1B}[18~", .f7),
+        ("\u{1B}[19~", .f8),
+        ("\u{1B}[20~", .f9),
+        ("\u{1B}[21~", .f10),
+        ("\u{1B}[23~", .f11),
+        ("\u{1B}[24~", .f12)
+    ]
+
     /// Parses ANSI escape sequences
     private func parseBuffer() -> Key? {
         // Enter
-        if buffer == "\r" || buffer == "\n" {
-            buffer.removeAll()
+        if buffer.hasPrefix("\r") || buffer.hasPrefix("\n") {
+            buffer.removeFirst()
             return .enter
         }
 
         // Backspace
-        if buffer == "\u{7F}" || buffer == "\u{08}" {
-            buffer.removeAll()
+        if buffer.hasPrefix("\u{7F}") || buffer.hasPrefix("\u{08}") {
+            buffer.removeFirst()
             return .backspace
         }
 
         // Tab
-        if buffer == "\t" {
-            buffer.removeAll()
+        if buffer.hasPrefix("\t") {
+            buffer.removeFirst()
             return .tab
         }
         
         // Control keys (Ctrl+A-Z = 1-26)
-        if buffer.count == 1, let first = buffer.first {
+        if let first = buffer.first {
             let scalar = first.unicodeScalars.first?.value ?? 0
             if scalar >= 1 && scalar <= 26 {
-                buffer.removeAll()
+                buffer.removeFirst()
                 let char = Character(UnicodeScalar(scalar + 96)!)
                 return .ctrl(char)
             }
@@ -278,9 +360,9 @@ public final class InputHandler: NSObject {
         }
         
         // Alt + character (ESC followed by a character)
-        if buffer.count == 2 && buffer.hasPrefix("\u{1B}") {
-            let char = buffer.last!
-            buffer.removeAll()
+        if buffer.count >= 2 && buffer.hasPrefix("\u{1B}") {
+            let char = buffer[buffer.index(buffer.startIndex, offsetBy: 1)]
+            buffer.removeFirst(2)
             return .alt(char)
         }
         
@@ -290,15 +372,9 @@ public final class InputHandler: NSObject {
             return nil
         }
 
-        // Regular key
-        if buffer.count == 1, let first = buffer.first {
-            buffer.removeAll()
-            return .character(first)
-        }
-
         return nil
     }
-    
+
     /// Attempts to parse an SGR mouse sequence
     private func parseMouseSequence() -> InputMouseEvent? {
         guard buffer.hasPrefix("\u{1B}[<") else {
@@ -469,80 +545,12 @@ public final class InputHandler: NSObject {
 
     /// Parses escape sequences
     private func parseEscapeSequence() -> Key? {
-        // Arrow keys: ESC [ A/B/C/D
-        if buffer == "\u{1B}[A" {
-            buffer.removeAll()
-            return .up
+        for (prefix, key) in escapeSequences {
+            if buffer.hasPrefix(prefix) {
+                buffer.removeFirst(prefix.count)
+                return key
+            }
         }
-        if buffer == "\u{1B}[B" {
-            buffer.removeAll()
-            return .down
-        }
-        if buffer == "\u{1B}[C" {
-            buffer.removeAll()
-            return .right
-        }
-        if buffer == "\u{1B}[D" {
-            buffer.removeAll()
-            return .left
-        }
-
-        // Home: ESC [ H or ESC [ 1 ~ or ESC O H
-        if buffer == "\u{1B}[H" || buffer == "\u{1B}[1~" || buffer == "\u{1B}OH" {
-            buffer.removeAll()
-            return .home
-        }
-
-        // End: ESC [ F or ESC [ 4 ~ or ESC O F
-        if buffer == "\u{1B}[F" || buffer == "\u{1B}[4~" || buffer == "\u{1B}OF" {
-            buffer.removeAll()
-            return .end
-        }
-
-        // Insert: ESC [ 2 ~
-        if buffer == "\u{1B}[2~" {
-            buffer.removeAll()
-            return .insert
-        }
-
-        // Delete: ESC [ 3 ~
-        if buffer == "\u{1B}[3~" {
-            buffer.removeAll()
-            return .delete
-        }
-
-        // Page Up: ESC [ 5 ~
-        if buffer == "\u{1B}[5~" {
-            buffer.removeAll()
-            return .pageUp
-        }
-
-        // Page Down: ESC [ 6 ~
-        if buffer == "\u{1B}[6~" {
-            buffer.removeAll()
-            return .pageDown
-        }
-
-        // Function keys F1-F12
-        // F1-F4: ESC O P/Q/R/S
-        if buffer == "\u{1B}OP" { buffer.removeAll(); return .f1 }
-        if buffer == "\u{1B}OQ" { buffer.removeAll(); return .f2 }
-        if buffer == "\u{1B}OR" { buffer.removeAll(); return .f3 }
-        if buffer == "\u{1B}OS" { buffer.removeAll(); return .f4 }
-        
-        // F1-F12: ESC [ 1 1 ~ to ESC [ 2 4 ~
-        if buffer == "\u{1B}[11~" { buffer.removeAll(); return .f1 }
-        if buffer == "\u{1B}[12~" { buffer.removeAll(); return .f2 }
-        if buffer == "\u{1B}[13~" { buffer.removeAll(); return .f3 }
-        if buffer == "\u{1B}[14~" { buffer.removeAll(); return .f4 }
-        if buffer == "\u{1B}[15~" { buffer.removeAll(); return .f5 }
-        if buffer == "\u{1B}[17~" { buffer.removeAll(); return .f6 }
-        if buffer == "\u{1B}[18~" { buffer.removeAll(); return .f7 }
-        if buffer == "\u{1B}[19~" { buffer.removeAll(); return .f8 }
-        if buffer == "\u{1B}[20~" { buffer.removeAll(); return .f9 }
-        if buffer == "\u{1B}[21~" { buffer.removeAll(); return .f10 }
-        if buffer == "\u{1B}[23~" { buffer.removeAll(); return .f11 }
-        if buffer == "\u{1B}[24~" { buffer.removeAll(); return .f12 }
 
         // If it's an incomplete escape sequence, wait for more characters
         if buffer.count < 6 {
@@ -550,7 +558,7 @@ public final class InputHandler: NSObject {
         }
 
         // Unknown combination
-        buffer.removeAll()
+        buffer.removeFirst()
         return .unknown
     }
 
