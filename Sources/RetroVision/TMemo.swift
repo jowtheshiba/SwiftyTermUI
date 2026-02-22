@@ -246,18 +246,22 @@ public class TMemo: TView {
         case .shiftLeft:
             startSelection()
             moveLeft()
+            copySelection()
             return true
         case .shiftRight:
             startSelection()
             moveRight()
+            copySelection()
             return true
         case .shiftUp:
             startSelection()
             moveUp()
+            copySelection()
             return true
         case .shiftDown:
             startSelection()
             moveDown()
+            copySelection()
             return true
         case .ctrl("c"), .ctrlInsert:
             copySelection()

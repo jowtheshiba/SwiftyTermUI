@@ -192,11 +192,13 @@ public class TInputLine: TView {
             startSelection()
             cursorPosition = max(0, cursorPosition - 1)
             clampCursor()
+            copySelection()
             return true
         case .shiftRight:
             startSelection()
             cursorPosition = min(text.count, cursorPosition + 1)
             clampCursor()
+            copySelection()
             return true
         case .ctrl("c"), .ctrlInsert:
             copySelection()
