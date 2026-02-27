@@ -2,6 +2,10 @@
 
 > **Note:** This project is currently under development. Cross-platform support is coming later. Tested on macOS.
 
+<img width="811" height="698" alt="scr" src="https://github.com/user-attachments/assets/f2334d0d-e7ad-435f-8a5b-cf88311cd9d2" />
+
+&nbsp;
+
 SwiftyTermUI consists of two main parts:
 - **Low-level engine**: A Swift analogue of `ncurses` for direct terminal control and drawing primitives, built from scratch without any external dependencies.
 - **High-level framework**: An attempt to recreate the classic `Turbo Vision` experience in a modern context.
