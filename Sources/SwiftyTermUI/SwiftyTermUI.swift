@@ -10,7 +10,7 @@ public final class SwiftyTermUI {
     private let inputHandler: InputHandler
     private let panelManager = PanelManager()
     private let renderOptimizer = RenderOptimizer()
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
 
     private var isInitialized = false
     private var cursorX = 0

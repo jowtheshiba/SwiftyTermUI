@@ -1,22 +1,12 @@
 # SwiftyTermUI
 
-Native Swift Terminal User Interface (TUI) library, inspired by ncurses but built from scratch without any external dependencies.
+> **Note:** This project is currently under development. Cross-platform support is coming later. Tested on macOS.
 
-## Architecture
+SwiftyTermUI consists of two main parts:
+- **Low-level engine**: A Swift analogue of `ncurses` for direct terminal control and drawing primitives, built from scratch without any external dependencies.
+- **High-level framework**: An attempt to recreate the classic `Turbo Vision` experience in a modern context.
 
-### Core Modules
-
-- **TerminalManager** - Handles terminal initialization, cleanup, and system interaction
-  - Buffered I/O with 8KB threshold for minimizing write() system calls
-- **ScreenBuffer** - Double-buffering system with dirty cell tracking for efficient rendering
-- **InputHandler** - Parses keyboard input including special keys and ANSI escape sequences
-- **RenderOptimizer** - Optimizes rendering performance through caching and batching
-  - AnsiSequenceCache: Caches ANSI codes for colors and text attributes
-  - CommandBatch: Groups commands into buffers (default 4KB) before output
-- **TextAttributes** - Text styling (bold, underline, italic, blink, reverse, dim)
-- **Color** - Terminal color support with multiple palette types
-
-### Main API
+## Main API
 
 ```swift
 let tui = SwiftyTermUI.shared
@@ -63,6 +53,7 @@ SwiftyTermUI includes several examples demonstrating different features:
 | `InputExample.swift` | Keyboard input handling including special keys |
 | `ComponentsExample.swift` | High-level components (Menu, Form, Button, TextBox, ProgressBar) |
 | `OptimizationExample.swift` | Demonstrates render optimization features and statistics |
+| `RetroDemo.swift` | A comprehensive demo of retro-styled UI components and interactions |
 
 Run any example with:
 ```bash
