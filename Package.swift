@@ -41,6 +41,10 @@ let package = Package(
             name: "RetroDemo",
             targets: ["RetroDemo"]
         ),
+        .executable(
+            name: "FileDialogExample",
+            targets: ["FileDialogExample"]
+        ),
     ],
     targets: [
         .target(
@@ -85,6 +89,12 @@ let package = Package(
             dependencies: ["RetroVision", "SwiftyTermUI"],
             path: "Examples",
             sources: ["RetroDemo.swift"]
+        ),
+        .executableTarget(
+            name: "FileDialogExample",
+            dependencies: ["RetroVision", "SwiftyTermUI"],
+            path: "Examples",
+            sources: ["FileDialogExample.swift"]
         ),
     ]
 )

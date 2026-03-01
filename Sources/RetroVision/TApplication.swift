@@ -12,6 +12,10 @@ open class TApplication {
     private var lastInputBlinkToggle = Date()
     private let inputBlinkInterval: TimeInterval = 0.5
     
+    private var lastMouseClickEvent: TEvent.MouseEvent?
+    private var lastMouseClickTime: Date?
+    private let doubleClickInterval: TimeInterval = 0.5
+    
     public init() {}
     
     private lazy var _desktop: TDesktop = {
@@ -139,7 +143,25 @@ open class TApplication {
             }
             
         case .mouse(let mouse):
-            let mouseEvent = convertMouseEvent(mouse)
+            var mouseEvent = convertMouseEvent(mouse)
+            
+            if mouseEvent.action == .down {
+                let now = Date()
+                if let lastTime = lastMouseClickTime, let lastEvent = lastMouseClickEvent,
+                   now.timeIntervalSince(lastTime) <= doubleClickInterval,
+                   lastEvent.button == mouseEvent.button,
+                   lastEvent.position.x == mouseEvent.position.x,
+                   lastEvent.position.y == mouseEvent.position.y {
+                    mouseEvent.clickCount = 2
+                    lastMouseClickTime = nil
+                    lastMouseClickEvent = nil
+                } else {
+                    mouseEvent.clickCount = 1
+                    lastMouseClickTime = now
+                    lastMouseClickEvent = mouseEvent
+                }
+            }
+            
             let isMoveOnly = mouse.action == .move  // только движение без кнопки — курсор-only
             
             if isMoveOnly {

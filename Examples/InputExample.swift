@@ -99,6 +99,8 @@ struct InputExample {
                         keyDescription = "F11"
                     case .f12:
                         keyDescription = "F12"
+                    case .shiftF10:
+                        keyDescription = "Shift+F10"
                     case .ctrl(let char):
                         keyDescription = "Ctrl+\(char)"
                     case .alt(let char):

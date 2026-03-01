@@ -10,8 +10,12 @@ public class TListBox: TView {
             syncScrollBar()
         }
     }
-    public private(set) var selectedIndex: Int
+    public var selectedIndex: Int
     public var onSelect: ((Int, String) -> Void)?
+    
+    public func setNeedsDisplay() {
+        // Redraw usually handled by TUI in game loop, but could mark dirty flag
+    }
     
     public weak var scrollBar: TScrollBar? {
         didSet {
