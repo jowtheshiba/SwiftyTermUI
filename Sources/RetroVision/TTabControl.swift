@@ -21,7 +21,7 @@ public class TTabControl: TView {
     /// Called when the active tab changes.
     public var onTabChanged: ((Int) -> Void)?
     
-    /// Height of the tab header area (tab top border + tab body/labels + frame top border).
+    /// Height of the tab header area (top border + tabs + middle separator).
     public let headerHeight: Int = 3
     
     /// Indent before the first tab label.
@@ -108,15 +108,15 @@ public class TTabControl: TView {
     @MainActor
     public override func draw() {
         guard isVisible else { return }
-        guard frame.width > 3, frame.height > 4 else { return }
+        guard frame.width > 3, frame.height > 3 else { return }
         
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         let (contentFg, contentBg) = RetroTextUtils.resolvedContentColors(for: self)
         let borderFg: Color = (contentFg == .black) ? .brightWhite : .white
         
-        let activeFg: Color = .black
-        let activeBg: Color = contentBg
+        let activeFg: Color = .brightWhite
+        let activeBg: Color = .blue
         
         layoutTabs()
         
@@ -132,155 +132,74 @@ public class TTabControl: TView {
             foregroundColor: contentFg, backgroundColor: contentBg
         )
         
-        // ── Row 0: Active tab top border ╔═══╗ ─────────────────
+        // ── Row 0: Frame top border ╔════════╗ ────────────────
+        tui.drawLine(
+            fromRow: origin.y, fromColumn: origin.x,
+            toRow: origin.y, toColumn: origin.x + lastCol,
+            character: "═", attributes: [],
+            foregroundColor: borderFg, backgroundColor: contentBg
+        )
+        tui.drawChar(
+            row: origin.y, column: origin.x,
+            character: "╔", attributes: [],
+            foregroundColor: borderFg, backgroundColor: contentBg
+        )
+        tui.drawChar(
+            row: origin.y, column: origin.x + lastCol,
+            character: "╗", attributes: [],
+            foregroundColor: borderFg, backgroundColor: contentBg
+        )
         
-        if _activeTabIndex >= 0 && _activeTabIndex < positions.count {
-            let pos = positions[_activeTabIndex]
-            let cornerL = pos.x - 1
-            let cornerR = pos.x + pos.width
-            
-            // ╔
-            if cornerL >= 0 && cornerL <= lastCol {
-                tui.drawChar(
-                    row: origin.y, column: origin.x + cornerL,
-                    character: "╔", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: activeBg
-                )
-            }
-            // ═══ fill between corners
-            let fillStart = max(pos.x, 0)
-            let fillEnd = min(pos.x + pos.width, lastCol + 1)
-            for col in fillStart..<fillEnd {
-                tui.drawChar(
-                    row: origin.y, column: origin.x + col,
-                    character: "═", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: activeBg
-                )
-            }
-            // ╗
-            if cornerR >= 0 && cornerR <= lastCol {
-                tui.drawChar(
-                    row: origin.y, column: origin.x + cornerR,
-                    character: "╗", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: activeBg
-                )
-            }
-        }
+        // ── Row 1: Tab Labels with side borders ║ ────────────
+        tui.drawChar(
+            row: origin.y + 1, column: origin.x,
+            character: "║", attributes: [],
+            foregroundColor: borderFg, backgroundColor: contentBg
+        )
         
-        // ── Row 1: Active tab body ║ Label ║ + inactive labels ──
-        
-        if _activeTabIndex >= 0 && _activeTabIndex < positions.count {
-            let pos = positions[_activeTabIndex]
-            let label = " \(tabs[_activeTabIndex].title) "
-            let cornerL = pos.x - 1
-            let cornerR = pos.x + pos.width
-            
-            // ║ left wall
-            if cornerL >= 0 && cornerL <= lastCol {
-                tui.drawChar(
-                    row: origin.y + 1, column: origin.x + cornerL,
-                    character: "║", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: activeBg
-                )
-            }
-            // Label inside the tab body
-            let clipped = String(label.prefix(max(0, lastCol - pos.x + 1)))
-            tui.drawString(
-                row: origin.y + 1, column: origin.x + pos.x,
-                text: clipped, attributes: [],
-                foregroundColor: activeFg, backgroundColor: activeBg
-            )
-            // ║ right wall
-            if cornerR >= 0 && cornerR <= lastCol {
-                tui.drawChar(
-                    row: origin.y + 1, column: origin.x + cornerR,
-                    character: "║", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: activeBg
-                )
-            }
-        }
-        
-        // Inactive tab labels on row 1 (same height as active label)
         for (index, tab) in tabs.enumerated() {
-            guard index != _activeTabIndex, index < positions.count else { continue }
+            guard index < positions.count else { continue }
             let pos = positions[index]
             let label = " \(tab.title) "
-            let clipped = String(label.prefix(max(0, lastCol - pos.x + 1)))
+            
+            let isSelected = (index == _activeTabIndex)
+            let fg = isSelected ? activeFg : contentFg
+            let bg = isSelected ? activeBg : contentBg
+            
+            let availableWidth = max(0, lastCol - pos.x)
+            guard availableWidth > 0 else { continue }
+            
+            let clipped = String(label.prefix(availableWidth))
             tui.drawString(
                 row: origin.y + 1, column: origin.x + pos.x,
                 text: clipped, attributes: [],
-                foregroundColor: contentFg, backgroundColor: contentBg
+                foregroundColor: fg, backgroundColor: bg
             )
         }
         
-        // ── Row 2: Frame top border ╔═╝ … ╚═══╗ ────────────────
+        tui.drawChar(
+            row: origin.y + 1, column: origin.x + lastCol,
+            character: "║", attributes: [],
+            foregroundColor: borderFg, backgroundColor: contentBg
+        )
         
-        // Full ═ line
+        // ── Row 2: Middle separator ╠════════╣ ────────────────
         tui.drawLine(
             fromRow: origin.y + 2, fromColumn: origin.x,
             toRow: origin.y + 2, toColumn: origin.x + lastCol,
             character: "═", attributes: [],
             foregroundColor: borderFg, backgroundColor: contentBg
         )
-        // Frame corners
         tui.drawChar(
             row: origin.y + 2, column: origin.x,
-            character: "╔", attributes: [],
+            character: "╠", attributes: [],
             foregroundColor: borderFg, backgroundColor: contentBg
         )
         tui.drawChar(
             row: origin.y + 2, column: origin.x + lastCol,
-            character: "╗", attributes: [],
+            character: "╣", attributes: [],
             foregroundColor: borderFg, backgroundColor: contentBg
         )
-        
-        // Active tab break — tab opens into the content frame
-        if _activeTabIndex >= 0 && _activeTabIndex < positions.count {
-            let pos = positions[_activeTabIndex]
-            let cornerL = pos.x - 1
-            let cornerR = pos.x + pos.width
-            
-            // ╝ — left junction (or ║ when tab meets the frame edge)
-            if cornerL > 0 && cornerL < lastCol {
-                tui.drawChar(
-                    row: origin.y + 2, column: origin.x + cornerL,
-                    character: "╝", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: contentBg
-                )
-            } else if cornerL == 0 {
-                // Tab's left wall merges with the frame's left border
-                tui.drawChar(
-                    row: origin.y + 2, column: origin.x,
-                    character: "║", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: contentBg
-                )
-            }
-            // Gap (tab merges into content)
-            let gapStart = max(pos.x, 1)
-            let gapEnd = min(pos.x + pos.width, lastCol)
-            for col in gapStart..<gapEnd {
-                tui.drawChar(
-                    row: origin.y + 2, column: origin.x + col,
-                    character: " ", attributes: [],
-                    foregroundColor: contentFg, backgroundColor: contentBg
-                )
-            }
-            // ╚ — right junction (or ║ when tab meets the frame edge)
-            if cornerR > 0 && cornerR < lastCol {
-                tui.drawChar(
-                    row: origin.y + 2, column: origin.x + cornerR,
-                    character: "╚", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: contentBg
-                )
-            } else if cornerR == lastCol {
-                // Tab's right wall merges with the frame's right border
-                tui.drawChar(
-                    row: origin.y + 2, column: origin.x + cornerR,
-                    character: "║", attributes: [],
-                    foregroundColor: borderFg, backgroundColor: contentBg
-                )
-            }
-        }
         
         // ── Rows 3…lastRow-1: Left & right borders ║ ───────────
         
@@ -341,9 +260,9 @@ public class TTabControl: TView {
     
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
-        // Clicks on the header rows (0, 1, or 2) switch tabs
+        // Clicks on the tab header row (1) switch tabs
         if event.action == .down, event.button == .left,
-           event.position.y >= 0, event.position.y <= 2 {
+           event.position.y == 1 {
             return selectTabAtX(event.position.x)
         }
         return false
@@ -367,9 +286,9 @@ public class TTabControl: TView {
     private func selectTabAtX(_ localX: Int) -> Bool {
         let positions = computeTabPositions()
         for (index, pos) in positions.enumerated() {
-            // Hit area includes ║ walls on each side
-            let hitStart = pos.x - 1
-            let hitEnd = pos.x + pos.width
+            // Hit area is just the label width
+            let hitStart = pos.x
+            let hitEnd = pos.x + pos.width - 1
             if localX >= hitStart && localX <= hitEnd {
                 activeTabIndex = index
                 return true
