@@ -17,6 +17,8 @@ open class TView {
     
     public var isVisible: Bool = true
     public var isFocused: Bool = false
+    /// Whether the view participates in Tab/Shift+Tab focus traversal
+    open var canFocus: Bool { false }
     public var contextMenu: (() -> [TMenuItem])?
     
     public init(frame: Rect) {
@@ -49,12 +51,24 @@ open class TView {
         switch event {
         case .mouse(let mouseEvent):
             handleMouseEvent(mouseEvent)
+        case .command(let command):
+            if handleCommand(command) { return }
+            for view in subviews.reversed() {
+                view.handleEvent(event)
+            }
         default:
             // Pass event to subviews (simple responder chain)
             for view in subviews.reversed() {
                 view.handleEvent(event)
             }
         }
+    }
+
+    /// Handles a framework command. Returns true when the command was consumed.
+    @MainActor
+    @discardableResult
+    open func handleCommand(_ command: TEvent.Command) -> Bool {
+        return false
     }
     
     @MainActor
@@ -130,6 +144,23 @@ open class TView {
         }
         if isFocused { return self }
         return nil
+    }
+
+    /// Returns visible focusable views in this subtree, in depth-first order
+    @MainActor
+    public func focusableDescendants() -> [TView] {
+        var result: [TView] = []
+        collectFocusable(into: &result)
+        return result
+    }
+
+    @MainActor
+    private func collectFocusable(into result: inout [TView]) {
+        guard isVisible else { return }
+        if canFocus { result.append(self) }
+        for view in subviews {
+            view.collectFocusable(into: &result)
+        }
     }
 
     /// Clears focus state in this subtree

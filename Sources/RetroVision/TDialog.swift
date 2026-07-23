@@ -6,4 +6,13 @@ public class TDialog: TWindow {
         super.init(frame: frame, title: title, style: .dialog)
         allowResizing = false
     }
+
+    @MainActor
+    public override func handleCommand(_ command: TEvent.Command) -> Bool {
+        if command == .cancel {
+            close()
+            return true
+        }
+        return super.handleCommand(command)
+    }
 }

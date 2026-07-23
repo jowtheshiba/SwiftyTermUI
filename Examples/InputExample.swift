@@ -39,6 +39,8 @@ struct InputExample {
                         running = false
                     case .tab:
                         keyDescription = "Tab"
+                    case .shiftTab:
+                        keyDescription = "Shift+Tab"
                     case .backspace:
                         keyDescription = "Backspace"
                     case .delete:

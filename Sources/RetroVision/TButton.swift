@@ -2,6 +2,7 @@ import Foundation
 import SwiftyTermUI
 
 public class TButton: TView {
+    public override var canFocus: Bool { true }
     public var title: String
     public var action: () -> Void
     

@@ -1,6 +1,7 @@
 import SwiftyTermUI
 
 public class TListBox: TView {
+    public override var canFocus: Bool { true }
     public var items: [String] {
         didSet {
             if selectedIndex >= items.count {

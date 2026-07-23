@@ -16,6 +16,7 @@ public enum Key: Equatable {
     case enter
     case escape
     case tab
+    case shiftTab
     case backspace
     case delete
     case home
@@ -300,6 +301,7 @@ public final class InputHandler: NSObject {
         ("\u{1B}[3~", .delete),
         ("\u{1B}[5~", .pageUp),
         ("\u{1B}[6~", .pageDown),
+        ("\u{1B}[Z", .shiftTab),
         ("\u{1B}[1;2A", .shiftUp),
         ("\u{1B}[1;2B", .shiftDown),
         ("\u{1B}[1;2C", .shiftRight),

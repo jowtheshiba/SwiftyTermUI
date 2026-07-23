@@ -116,10 +116,10 @@ open class TApplication {
             
         case .keyPress(let key):
             if key == .ctrl("c") {
-                isRunning = false
+                postCommand(.quit)
                 return
             }
-            
+
             if key == .shiftF10, let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
                 focused.showContextMenuFromKeyboard()
                 needsFullRedraw = true
@@ -130,10 +130,14 @@ open class TApplication {
             if let menuBar = menuBar {
                 menuBar.handleEvent(tEvent)
             }
-            
+
             desktop.handleEvent(tEvent)
-            
-            if let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
+
+            // Tab moves focus between views, so both the old and new focused
+            // views need repainting — partial redraw is not enough
+            let isFocusTraversalKey = key == .tab || key == .shiftTab
+
+            if !isFocusTraversalKey, let focused = desktop.findFocusedView(), focused is TInputLine || focused is TMemo {
                 resetInputBlink()
                 needsFullRedraw = false
                 focused.draw()
@@ -241,6 +245,31 @@ open class TApplication {
         return translated
     }
     
+    /// Posts a framework command.
+    /// `.quit` stops the run loop; other commands are first offered to the
+    /// focused view and its superview chain, then broadcast to the desktop.
+    @MainActor
+    public func postCommand(_ command: TEvent.Command) {
+        if command == .quit {
+            isRunning = false
+            return
+        }
+
+        if let focused = desktop.findFocusedView() {
+            var current: TView? = focused
+            while let view = current {
+                if view.handleCommand(command) {
+                    redraw()
+                    return
+                }
+                current = view.superview
+            }
+        }
+
+        desktop.handleEvent(.command(command))
+        redraw()
+    }
+
     @MainActor
     public func redraw() {
         desktop.draw()

@@ -2,6 +2,7 @@ import SwiftyTermUI
 
 @MainActor
 public class TInputLine: TView {
+    public override var canFocus: Bool { true }
     @MainActor public static var cursorBlinkVisible: Bool = true
 
     public var text: String {

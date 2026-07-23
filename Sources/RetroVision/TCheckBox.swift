@@ -1,6 +1,7 @@
 import SwiftyTermUI
 
 public class TCheckBox: TView {
+    public override var canFocus: Bool { true }
     public var title: String
     public var attributes: TextAttributes
     public var onToggle: ((Bool) -> Void)?

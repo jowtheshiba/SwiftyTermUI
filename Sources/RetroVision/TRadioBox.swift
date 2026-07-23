@@ -1,6 +1,7 @@
 import SwiftyTermUI
 
 public class TRadioBox: TView {
+    public override var canFocus: Bool { true }
     public let groupID: String
     public var title: String
     public var attributes: TextAttributes

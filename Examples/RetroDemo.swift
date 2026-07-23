@@ -14,9 +14,8 @@ struct RetroDemo {
             TMenuItem(title: "Open...", action: {}, shortcut: "F3"),
             TMenuItem(title: "Save", action: {}, shortcut: "F2"),
             TMenuItem.separator,
-            TMenuItem(title: "Exit", action: { 
-                SwiftyTermUI.shared.shutdown()
-                exit(0)
+            TMenuItem(title: "Exit", action: {
+                TApplication.shared.postCommand(.quit)
             }, shortcut: "Alt+X")
         ])
         
@@ -55,7 +54,9 @@ struct RetroDemo {
             TMenuItem.separator,
             TMenuItem(title: "Next", action: {}, shortcut: "F6"),
             TMenuItem(title: "Previous", action: {}, shortcut: "Shift+F6"),
-            TMenuItem(title: "Close", action: {}, shortcut: "Alt+F3")
+            TMenuItem(title: "Close", action: {
+                TApplication.shared.postCommand(.close)
+            }, shortcut: "Alt+F3")
         ])
         
         let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()

@@ -2,6 +2,7 @@ import SwiftyTermUI
 
 @MainActor
 public class TMemo: TView {
+    public override var canFocus: Bool { true }
     public var lines: [String] {
         didSet {
             if lines.isEmpty { lines = [""] }

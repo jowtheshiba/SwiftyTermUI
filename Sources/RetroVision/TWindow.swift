@@ -31,7 +31,8 @@ public class TWindow: TView {
     public private(set) var horizontalScrollBar: TScrollBar?
     
     public var onDrawContent: ((Rect) -> Void)?
-    
+    public var onClose: (() -> Void)?
+
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
         self.style = style
@@ -39,6 +40,52 @@ public class TWindow: TView {
         super.init(frame: frame)
     }
     
+    /// Closes the window, removing it from the view hierarchy
+    @MainActor
+    open func close() {
+        onClose?()
+        removeFromSuperview()
+    }
+
+    @MainActor
+    open override func handleCommand(_ command: TEvent.Command) -> Bool {
+        if command == .close {
+            close()
+            return true
+        }
+        return super.handleCommand(command)
+    }
+
+    @MainActor
+    public override func handleEvent(_ event: TEvent) {
+        // Tab/Shift+Tab cycle focus between focusable child views,
+        // but only in the window that currently owns focus
+        if case .key(let key) = event, key == .tab || key == .shiftTab {
+            if findFocusedView() != nil {
+                moveFocus(backward: key == .shiftTab)
+                return
+            }
+        }
+        super.handleEvent(event)
+    }
+
+    @MainActor
+    private func moveFocus(backward: Bool) {
+        let focusables = focusableDescendants()
+        guard !focusables.isEmpty else { return }
+
+        let next: TView
+        if let current = findFocusedView(),
+           let index = focusables.firstIndex(where: { $0 === current }) {
+            let offset = backward ? focusables.count - 1 : 1
+            next = focusables[(index + offset) % focusables.count]
+        } else {
+            // Focus is on the window itself: enter the tab order at either end
+            next = backward ? focusables[focusables.count - 1] : focusables[0]
+        }
+        RetroTextUtils.focus(view: next)
+    }
+
     public var contentFrame: Rect {
         let innerWidth = max(0, frame.width - 2)
         let innerHeight = max(0, frame.height - 2)
