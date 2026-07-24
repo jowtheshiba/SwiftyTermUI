@@ -1,4 +1,8 @@
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import Foundation
 
 /// Types of events that can occur
@@ -108,27 +112,24 @@ public struct InputMouseEvent: Equatable, Sendable {
 
 /// Terminal input handler
 @MainActor
-public final class InputHandler: NSObject {
+public final class InputHandler {
     private var buffer = ""
     private var isBracketedPaste = false
     private var pasteBuffer = ""
     private let lock = NSLock()
     private let eventQueue = EventQueue()
-    private let resizeNotification = NSNotification.Name("TerminalDidResize")
 
-    public override init() {
-        super.init()
-        
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleResizeNotification(_:)),
-            name: resizeNotification,
-            object: nil
-        )
-    }
+    public init() {}
 
     /// Reads the next input event (non-blocking)
     public func readEvent() -> InputEvent? {
+        // SIGWINCH sets a flag (the only async-signal-safe option); convert
+        // it into an event here on the polling thread
+        if terminalResizePending != 0 {
+            terminalResizePending = 0
+            return .terminalResize
+        }
+
         // First check the event queue
         if let event = eventQueue.dequeue() {
             return event
@@ -146,12 +147,8 @@ public final class InputHandler: NSObject {
             for i in 0..<bytesRead {
                 buffer.append(Character(UnicodeScalar(readBuffer[i])))
             }
-        } else if bytesRead < 0 {
-            // Error reading (EAGAIN/EWOULDBLOCK in non-blocking mode is normal)
-            let errno = Darwin.errno
-            if errno != EAGAIN && errno != EWOULDBLOCK {
-            }
         }
+        // Negative bytesRead means EAGAIN/EWOULDBLOCK in non-blocking mode — ignored
         
         // Handle Bracketed Paste Mode
         if !isBracketedPaste && buffer.hasPrefix("\u{1B}[200~") {
@@ -573,12 +570,4 @@ public final class InputHandler: NSObject {
         return .unknown
     }
 
-    @objc
-    private func handleResizeNotification(_ notification: Notification) {
-        eventQueue.enqueue(.terminalResize)
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self, name: resizeNotification, object: nil)
-    }
 }

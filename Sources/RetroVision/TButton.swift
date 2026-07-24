@@ -1,5 +1,8 @@
 import Foundation
 import SwiftyTermUI
+#if canImport(Glibc)
+import Glibc
+#endif
 
 public class TButton: TView {
     public override var canFocus: Bool { true }

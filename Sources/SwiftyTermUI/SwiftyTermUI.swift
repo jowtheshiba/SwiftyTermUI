@@ -32,13 +32,6 @@ public final class SwiftyTermUI {
 
         try terminal.initialize()
         isInitialized = true
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleTerminalResize),
-            name: NSNotification.Name("TerminalDidResize"),
-            object: nil
-        )
     }
 
     public func shutdown() {
@@ -47,7 +40,6 @@ public final class SwiftyTermUI {
 
         guard isInitialized else { return }
 
-        NotificationCenter.default.removeObserver(self)
         disableMouseCapture()
         terminal.cleanup()
         isInitialized = false
@@ -187,11 +179,19 @@ public final class SwiftyTermUI {
     // MARK: - Input
 
     public func readEvent() -> InputEvent? {
-        inputHandler.readEvent()
+        let event = inputHandler.readEvent()
+        if case .terminalResize = event {
+            handleTerminalResize()
+        }
+        return event
     }
     
     public func pollEvents() -> [InputEvent] {
-        inputHandler.pollEvents()
+        let events = inputHandler.pollEvents()
+        if events.contains(.terminalResize) {
+            handleTerminalResize()
+        }
+        return events
     }
     
     public func clearEvents() {
@@ -361,7 +361,6 @@ public final class SwiftyTermUI {
 
     // MARK: - Private
 
-    @objc
     private func handleTerminalResize() {
         lock.lock()
         defer { lock.unlock() }

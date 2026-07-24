@@ -1,9 +1,9 @@
-import XCTest
+import Testing
 @testable import RetroVision
 import SwiftyTermUI
 
 @MainActor
-final class RetroVisionTests: XCTestCase {
+struct RetroVisionTests {
 
     // MARK: - Fixtures
 
@@ -28,32 +28,32 @@ final class RetroVisionTests: XCTestCase {
 
     // MARK: - Focus traversal
 
-    func testFocusableDescendantsSkipsNonFocusable() {
+    @Test func focusableDescendantsSkipsNonFocusable() {
         let (dialog, _, _, _) = makeDialog()
-        XCTAssertEqual(dialog.focusableDescendants().count, 3)
+        #expect(dialog.focusableDescendants().count == 3)
     }
 
-    func testTabCyclesFocusWithWraparound() {
+    @Test func tabCyclesFocusWithWraparound() {
         let desktop = makeDesktop()
         let (dialog, input, checkbox, ok) = makeDialog()
         desktop.addSubview(dialog)
 
         desktop.handleEvent(.key(.tab))
-        XCTAssertTrue(input.isFocused, "Tab with no focus enters first child of topmost window")
+        #expect(input.isFocused, "Tab with no focus enters first child of topmost window")
 
         dialog.handleEvent(.key(.tab))
-        XCTAssertTrue(checkbox.isFocused)
+        #expect(checkbox.isFocused)
         dialog.handleEvent(.key(.tab))
-        XCTAssertTrue(ok.isFocused)
+        #expect(ok.isFocused)
         dialog.handleEvent(.key(.tab))
-        XCTAssertTrue(input.isFocused, "Tab wraps around")
+        #expect(input.isFocused, "Tab wraps around")
         dialog.handleEvent(.key(.shiftTab))
-        XCTAssertTrue(ok.isFocused, "Shift+Tab wraps backwards")
+        #expect(ok.isFocused, "Shift+Tab wraps backwards")
     }
 
     // MARK: - Key routing
 
-    func testKeysRoutedOnlyToFocusedWindow() {
+    @Test func keysRoutedOnlyToFocusedWindow() {
         let desktop = makeDesktop()
         let (dialog, _, checkbox, _) = makeDialog()
         desktop.addSubview(dialog)
@@ -68,13 +68,13 @@ final class RetroVisionTests: XCTestCase {
         cb2.isChecked = false
 
         desktop.handleEvent(.key(.character(" ")))
-        XCTAssertTrue(checkbox.isChecked, "space toggles the focused checkbox")
-        XCTAssertFalse(cb2.isChecked, "unfocused window's checkbox untouched")
+        #expect(checkbox.isChecked, "space toggles the focused checkbox")
+        #expect(!(cb2.isChecked), "unfocused window's checkbox untouched")
     }
 
     // MARK: - Modality
 
-    func testModalOwnsKeyboardAndSwallowsOutsideClicks() {
+    @Test func modalOwnsKeyboardAndSwallowsOutsideClicks() {
         let desktop = makeDesktop()
         let (dialog, _, checkbox, _) = makeDialog()
         desktop.addSubview(dialog)
@@ -89,20 +89,20 @@ final class RetroVisionTests: XCTestCase {
         desktop.clearFocus()
         mInput.isFocused = true
 
-        XCTAssertTrue(desktop.activeModal === modal)
+        #expect(desktop.activeModal === modal)
 
         checkbox.isChecked = false
         desktop.handleEvent(.key(.character("a")))
-        XCTAssertEqual(mInput.text, "a", "typing goes to the modal")
-        XCTAssertFalse(checkbox.isChecked, "background widgets get nothing")
+        #expect(mInput.text == "a", "typing goes to the modal")
+        #expect(!(checkbox.isChecked), "background widgets get nothing")
 
         let bgClick = TEvent.MouseEvent(position: Point(x: 46, y: 3), button: .left, action: .down)
         _ = desktop.handleMouseEvent(bgClick)
-        XCTAssertFalse(win2.isFocused, "click on a background window is swallowed")
-        XCTAssertTrue(mInput.isFocused)
+        #expect(!(win2.isFocused), "click on a background window is swallowed")
+        #expect(mInput.isFocused)
     }
 
-    func testPresentModalFocusesChildAndRestoresOnClose() {
+    @Test func presentModalFocusesChildAndRestoresOnClose() {
         let app = TApplication.shared
         let desktop = app.desktop
         for view in desktop.subviews { view.removeFromSuperview() }
@@ -116,18 +116,18 @@ final class RetroVisionTests: XCTestCase {
         modal.addSubview(mInput)
         app.present(modal: modal)
 
-        XCTAssertTrue(mInput.isFocused, "present(modal:) focuses the first focusable child")
+        #expect(mInput.isFocused, "present(modal:) focuses the first focusable child")
 
         modal.handleEvent(.key(.escape))
-        XCTAssertNil(desktop.subviews.first { $0 === modal }, "Esc closes the modal")
-        XCTAssertTrue(checkbox.isFocused, "focus restored to the previous owner")
+        #expect((desktop.subviews.first { $0 === modal }) == nil, "Esc closes the modal")
+        #expect(checkbox.isFocused, "focus restored to the previous owner")
 
         for view in desktop.subviews { view.removeFromSuperview() }
     }
 
     // MARK: - Dialog conventions
 
-    func testEnterPressesDefaultButtonUnlessFocusedViewUsesEnter() {
+    @Test func enterPressesDefaultButtonUnlessFocusedViewUsesEnter() {
         let desktop = makeDesktop()
         let dialog = TDialog(frame: Rect(x: 5, y: 3, width: 40, height: 12), title: "D")
         let input = TInputLine(frame: Rect(x: 2, y: 2, width: 20, height: 1))
@@ -145,16 +145,16 @@ final class RetroVisionTests: XCTestCase {
 
         RetroTextUtils.focus(view: input)
         dialog.handleEvent(.key(.enter))
-        XCTAssertTrue(okPressed, "Enter in an input presses the default button")
+        #expect(okPressed, "Enter in an input presses the default button")
 
         okPressed = false
         RetroTextUtils.focus(view: other)
         dialog.handleEvent(.key(.enter))
-        XCTAssertTrue(otherPressed, "Enter on a focused button presses that button")
-        XCTAssertFalse(okPressed)
+        #expect(otherPressed, "Enter on a focused button presses that button")
+        #expect(!(okPressed))
     }
 
-    func testEscClosesDialogViaCancel() {
+    @Test func escClosesDialogViaCancel() {
         let desktop = makeDesktop()
         let (dialog, _, _, _) = makeDialog()
         var closed = false
@@ -162,23 +162,23 @@ final class RetroVisionTests: XCTestCase {
         desktop.addSubview(dialog)
 
         dialog.handleEvent(.key(.escape))
-        XCTAssertTrue(closed)
-        XCTAssertNil(desktop.subviews.first { $0 === dialog })
+        #expect(closed)
+        #expect((desktop.subviews.first { $0 === dialog }) == nil)
     }
 
     // MARK: - Commands
 
-    func testCloseCommandClosesWindow() {
+    @Test func closeCommandClosesWindow() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 0, y: 0, width: 20, height: 8), title: "W")
         desktop.addSubview(window)
         desktop.handleEvent(.command(.close))
-        XCTAssertTrue(desktop.subviews.isEmpty, "broadcast .close reaches the topmost window")
+        #expect(desktop.subviews.isEmpty, "broadcast .close reaches the topmost window")
     }
 
     // MARK: - Popup overlay
 
-    func testOpenPopupOwnsInput() {
+    @Test func openPopupOwnsInput() {
         let desktop = makeDesktop()
         let (dialog, _, checkbox, _) = makeDialog()
         desktop.addSubview(dialog)
@@ -194,16 +194,16 @@ final class RetroVisionTests: XCTestCase {
 
         checkbox.isChecked = false
         desktop.handleEvent(.key(.character(" ")))
-        XCTAssertFalse(checkbox.isChecked, "popup consumes keys")
+        #expect(!(checkbox.isChecked), "popup consumes keys")
 
         desktop.handleEvent(.key(.enter))
-        XCTAssertTrue(fired, "Enter activates the popup item")
-        XCTAssertNil(desktop.subviews.first { $0 === menu }, "popup dismissed")
+        #expect(fired, "Enter activates the popup item")
+        #expect((desktop.subviews.first { $0 === menu }) == nil, "popup dismissed")
     }
 
     // MARK: - Close button
 
-    func testCloseButtonClick() {
+    @Test func closeButtonClick() {
         let desktop = makeDesktop()
         var closed = false
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 20, height: 8), title: "Closable")
@@ -213,11 +213,11 @@ final class RetroVisionTests: XCTestCase {
         // [■] occupies columns x+2...x+4 of the title row
         let click = TEvent.MouseEvent(position: Point(x: 13, y: 5), button: .left, action: .down)
         _ = desktop.handleMouseEvent(click)
-        XCTAssertTrue(closed)
-        XCTAssertNil(desktop.subviews.first { $0 === window })
+        #expect(closed)
+        #expect((desktop.subviews.first { $0 === window }) == nil)
     }
 
-    func testCloseButtonRespectsAllowClosing() {
+    @Test func closeButtonRespectsAllowClosing() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 20, height: 8), title: "NoClose")
         window.allowClosing = false
@@ -225,12 +225,12 @@ final class RetroVisionTests: XCTestCase {
 
         let click = TEvent.MouseEvent(position: Point(x: 13, y: 5), button: .left, action: .down)
         _ = desktop.handleMouseEvent(click)
-        XCTAssertNotNil(desktop.subviews.first { $0 === window })
+        #expect((desktop.subviews.first { $0 === window }) != nil)
     }
 
     // MARK: - Menu shortcuts
 
-    func testMenuShortcutsFireBoundItems() {
+    @Test func menuShortcutsFireBoundItems() {
         var saved = false
         var nested = false
         let bar = TMenuBar(frame: Rect(x: 0, y: 0, width: 80, height: 1), menus: [
@@ -244,62 +244,62 @@ final class RetroVisionTests: XCTestCase {
             ])
         ])
 
-        XCTAssertTrue(bar.handleShortcut(.f2))
-        XCTAssertTrue(saved)
-        XCTAssertTrue(bar.handleShortcut(.ctrl("n")), "shortcuts are found in submenus")
-        XCTAssertTrue(nested)
-        XCTAssertFalse(bar.handleShortcut(.f9), "unbound keys are not consumed")
+        #expect(bar.handleShortcut(.f2))
+        #expect(saved)
+        #expect(bar.handleShortcut(.ctrl("n")), "shortcuts are found in submenus")
+        #expect(nested)
+        #expect(!(bar.handleShortcut(.f9)), "unbound keys are not consumed")
 
         bar.handleEvent(.key(.alt("e")))
-        XCTAssertTrue(bar.isMenuOpen, "Alt+E opens the Edit menu")
-        XCTAssertFalse(bar.handleShortcut(.f2), "shortcuts are inactive while a menu is open")
+        #expect(bar.isMenuOpen, "Alt+E opens the Edit menu")
+        #expect(!(bar.handleShortcut(.f2)), "shortcuts are inactive while a menu is open")
         bar.handleEvent(.key(.escape))
-        XCTAssertFalse(bar.isMenuOpen)
+        #expect(!(bar.isMenuOpen))
         bar.handleEvent(.key(.alt("z")))
-        XCTAssertFalse(bar.isMenuOpen, "Alt with no matching menu does nothing")
+        #expect(!(bar.isMenuOpen), "Alt with no matching menu does nothing")
     }
 
     // MARK: - Window management commands
 
-    func testZoomTogglesBetweenFrameAndArrangeArea() {
+    @Test func zoomTogglesBetweenFrameAndArrangeArea() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 30, height: 10), title: "W")
         desktop.addSubview(window)
         let original = window.frame
 
-        XCTAssertTrue(window.handleCommand(.zoom))
-        XCTAssertTrue(window.isZoomed)
-        XCTAssertEqual(window.frame, desktop.arrangeArea())
+        #expect(window.handleCommand(.zoom))
+        #expect(window.isZoomed)
+        #expect(window.frame == desktop.arrangeArea())
 
-        XCTAssertTrue(window.handleCommand(.zoom))
-        XCTAssertFalse(window.isZoomed)
-        XCTAssertEqual(window.frame, original, "unzoom restores the original frame")
+        #expect(window.handleCommand(.zoom))
+        #expect(!(window.isZoomed))
+        #expect(window.frame == original, "unzoom restores the original frame")
     }
 
-    func testZoomRespectsMenuBarAndStatusLine() {
+    @Test func zoomRespectsMenuBarAndStatusLine() {
         let desktop = makeDesktop()
         desktop.menuBarHeight = 1
         desktop.addSubview(TStatusLine(frame: Rect(x: 0, y: 23, width: 80, height: 1), items: []))
         let area = desktop.arrangeArea()
-        XCTAssertEqual(area, Rect(x: 0, y: 1, width: 80, height: 22))
+        #expect(area == Rect(x: 0, y: 1, width: 80, height: 22))
     }
 
-    func testNextAndPreviousCycleWindows() {
+    @Test func nextAndPreviousCycleWindows() {
         let desktop = makeDesktop()
         let winA = TWindow(frame: Rect(x: 0, y: 0, width: 20, height: 8), title: "A")
         let winB = TWindow(frame: Rect(x: 25, y: 0, width: 20, height: 8), title: "B")
         desktop.addSubview(winA)
         desktop.addSubview(winB)
 
-        XCTAssertTrue(desktop.handleCommand(.next))
-        XCTAssertTrue(winA.isFocused, "front window B yields to A")
-        XCTAssertTrue(desktop.subviews.last { $0 is TWindow } === winA, "A brought to front")
+        #expect(desktop.handleCommand(.next))
+        #expect(winA.isFocused, "front window B yields to A")
+        #expect(desktop.subviews.last { $0 is TWindow } === winA, "A brought to front")
 
-        XCTAssertTrue(desktop.handleCommand(.previous))
-        XCTAssertTrue(winB.isFocused, "previous cycles back")
+        #expect(desktop.handleCommand(.previous))
+        #expect(winB.isFocused, "previous cycles back")
     }
 
-    func testTileArrangesWindowsInsideArea() {
+    @Test func tileArrangesWindowsInsideArea() {
         let desktop = makeDesktop()
         desktop.menuBarHeight = 1
         let windows = (0..<3).map { i in
@@ -311,17 +311,17 @@ final class RetroVisionTests: XCTestCase {
 
         let area = desktop.arrangeArea()
         for window in windows {
-            XCTAssertGreaterThanOrEqual(window.frame.x, area.x)
-            XCTAssertGreaterThanOrEqual(window.frame.y, area.y)
-            XCTAssertLessThanOrEqual(window.frame.maxX, area.maxX)
-            XCTAssertLessThanOrEqual(window.frame.maxY, area.maxY)
+            #expect(window.frame.x >= area.x)
+            #expect(window.frame.y >= area.y)
+            #expect(window.frame.maxX <= area.maxX)
+            #expect(window.frame.maxY <= area.maxY)
         }
         // No two windows share an origin
         let origins = Set(windows.map { "\($0.frame.x),\($0.frame.y)" })
-        XCTAssertEqual(origins.count, windows.count)
+        #expect(origins.count == windows.count)
     }
 
-    func testCascadeStaggersWindows() {
+    @Test func cascadeStaggersWindows() {
         let desktop = makeDesktop()
         let winA = TWindow(frame: Rect(x: 0, y: 0, width: 30, height: 10), title: "A")
         let winB = TWindow(frame: Rect(x: 40, y: 12, width: 30, height: 10), title: "B")
@@ -330,12 +330,12 @@ final class RetroVisionTests: XCTestCase {
 
         desktop.cascadeWindows()
 
-        XCTAssertEqual(winA.frame.width, winB.frame.width, "cascaded windows share a size")
-        XCTAssertEqual(winB.frame.x - winA.frame.x, 2)
-        XCTAssertEqual(winB.frame.y - winA.frame.y, 1)
+        #expect(winA.frame.width == winB.frame.width, "cascaded windows share a size")
+        #expect(winB.frame.x - winA.frame.x == 2)
+        #expect(winB.frame.y - winA.frame.y == 1)
     }
 
-    func testDialogsAreNotTiled() {
+    @Test func dialogsAreNotTiled() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 0, y: 0, width: 30, height: 10), title: "W")
         let dialog = TDialog(frame: Rect(x: 40, y: 12, width: 30, height: 10), title: "D")
@@ -344,37 +344,37 @@ final class RetroVisionTests: XCTestCase {
         let dialogFrame = dialog.frame
 
         desktop.tileWindows()
-        XCTAssertEqual(dialog.frame, dialogFrame, "dialogs keep their frame")
+        #expect(dialog.frame == dialogFrame, "dialogs keep their frame")
     }
 
     // MARK: - Keyboard Size/Move mode
 
-    func testKeyboardMoveResizeMode() {
+    @Test func keyboardMoveResizeMode() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 20, height: 8), title: "W")
         desktop.addSubview(window)
 
-        XCTAssertTrue(window.handleCommand(.resize))
-        XCTAssertTrue(desktop.keyboardArrangeWindow === window)
-        XCTAssertTrue(window.isDragging, "border highlighted while in mode")
+        #expect(window.handleCommand(.resize))
+        #expect(desktop.keyboardArrangeWindow === window)
+        #expect(window.isDragging, "border highlighted while in mode")
 
         desktop.handleEvent(.key(.right))
         desktop.handleEvent(.key(.down))
-        XCTAssertEqual(window.frame.x, 11)
-        XCTAssertEqual(window.frame.y, 6)
+        #expect(window.frame.x == 11)
+        #expect(window.frame.y == 6)
 
         desktop.handleEvent(.key(.shiftRight))
         desktop.handleEvent(.key(.shiftDown))
-        XCTAssertEqual(window.frame.width, 21)
-        XCTAssertEqual(window.frame.height, 9)
+        #expect(window.frame.width == 21)
+        #expect(window.frame.height == 9)
 
         desktop.handleEvent(.key(.enter))
-        XCTAssertNil(desktop.keyboardArrangeWindow, "Enter commits and exits the mode")
-        XCTAssertFalse(window.isDragging)
-        XCTAssertEqual(window.frame, Rect(x: 11, y: 6, width: 21, height: 9))
+        #expect((desktop.keyboardArrangeWindow) == nil, "Enter commits and exits the mode")
+        #expect(!(window.isDragging))
+        #expect(window.frame == Rect(x: 11, y: 6, width: 21, height: 9))
     }
 
-    func testKeyboardMoveResizeEscRestoresFrame() {
+    @Test func keyboardMoveResizeEscRestoresFrame() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 20, height: 8), title: "W")
         desktop.addSubview(window)
@@ -383,14 +383,14 @@ final class RetroVisionTests: XCTestCase {
         desktop.beginKeyboardMoveResize(for: window)
         desktop.handleEvent(.key(.right))
         desktop.handleEvent(.key(.shiftDown))
-        XCTAssertNotEqual(window.frame, original)
+        #expect(window.frame != original)
 
         desktop.handleEvent(.key(.escape))
-        XCTAssertEqual(window.frame, original, "Esc cancels all changes")
-        XCTAssertNil(desktop.keyboardArrangeWindow)
+        #expect(window.frame == original, "Esc cancels all changes")
+        #expect((desktop.keyboardArrangeWindow) == nil)
     }
 
-    func testKeyboardMoveClampsToDesktop() {
+    @Test func keyboardMoveClampsToDesktop() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 0, y: 0, width: 20, height: 8), title: "W")
         desktop.addSubview(window)
@@ -398,14 +398,14 @@ final class RetroVisionTests: XCTestCase {
         desktop.beginKeyboardMoveResize(for: window)
         desktop.handleEvent(.key(.left))
         desktop.handleEvent(.key(.up))
-        XCTAssertEqual(window.frame.x, 0, "cannot move past the left edge")
-        XCTAssertEqual(window.frame.y, 0)
+        #expect(window.frame.x == 0, "cannot move past the left edge")
+        #expect(window.frame.y == 0)
         desktop.handleEvent(.key(.escape))
     }
 
     // MARK: - Terminal resize clamping
 
-    func testClampWindowsToBounds() {
+    @Test func clampWindowsToBounds() {
         let desktop = makeDesktop()
         let offscreen = TWindow(frame: Rect(x: 70, y: 20, width: 30, height: 10), title: "Off")
         let oversized = TWindow(frame: Rect(x: 0, y: 0, width: 200, height: 60), title: "Big")
@@ -415,20 +415,20 @@ final class RetroVisionTests: XCTestCase {
         desktop.frame = Rect(x: 0, y: 0, width: 60, height: 20)
         desktop.clampWindowsToBounds()
 
-        XCTAssertLessThanOrEqual(offscreen.frame.maxX, 60)
-        XCTAssertLessThanOrEqual(offscreen.frame.maxY, 20)
-        XCTAssertEqual(oversized.frame, Rect(x: 0, y: 0, width: 60, height: 20), "oversized window shrunk to fit")
+        #expect(offscreen.frame.maxX <= 60)
+        #expect(offscreen.frame.maxY <= 20)
+        #expect(oversized.frame == Rect(x: 0, y: 0, width: 60, height: 20), "oversized window shrunk to fit")
     }
 
-    func testClampRefitsZoomedWindow() {
+    @Test func clampRefitsZoomedWindow() {
         let desktop = makeDesktop()
         let window = TWindow(frame: Rect(x: 10, y: 5, width: 30, height: 10), title: "W")
         desktop.addSubview(window)
         window.toggleZoom()
-        XCTAssertEqual(window.frame, desktop.arrangeArea())
+        #expect(window.frame == desktop.arrangeArea())
 
         desktop.frame = Rect(x: 0, y: 0, width: 50, height: 18)
         desktop.clampWindowsToBounds()
-        XCTAssertEqual(window.frame, desktop.arrangeArea(), "zoomed window follows the new size")
+        #expect(window.frame == desktop.arrangeArea(), "zoomed window follows the new size")
     }
 }

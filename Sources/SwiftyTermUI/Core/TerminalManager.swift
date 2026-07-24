@@ -1,5 +1,14 @@
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import Foundation
+
+/// Set from the SIGWINCH handler and polled by InputHandler.
+/// A plain sig_atomic_t flag is the only async-signal-safe mechanism —
+/// anything allocating (NotificationCenter, queues) is UB inside a handler.
+nonisolated(unsafe) var terminalResizePending: sig_atomic_t = 0
 
 /// Terminal state and configuration management
 @MainActor
@@ -33,9 +42,13 @@ public final class TerminalManager {
         var newTermios = originalTermios
 
         // Disable canonical mode, echo, and signals (ISIG allows capturing Ctrl+C)
-        newTermios.c_lflag &= ~(UInt(ICANON) | UInt(ECHO) | UInt(ISIG))
-        newTermios.c_cc.16 = 0 // VMIN  — index 16 on macOS/Darwin
-        newTermios.c_cc.17 = 0 // VTIME — index 17 on macOS/Darwin
+        newTermios.c_lflag &= ~(tcflag_t(ICANON) | tcflag_t(ECHO) | tcflag_t(ISIG))
+        // VMIN/VTIME indices differ across platforms (Darwin: 16/17, Linux: 6/5),
+        // so index the c_cc tuple through raw bytes using the system constants
+        withUnsafeMutableBytes(of: &newTermios.c_cc) { cc in
+            cc[Int(VMIN)] = 0
+            cc[Int(VTIME)] = 0
+        }
 
         guard tcsetattr(STDIN_FILENO, TCSAFLUSH, &newTermios) == 0 else {
             throw TerminalError.failedToSetTerminalAttributes
@@ -43,12 +56,9 @@ public final class TerminalManager {
 
         isRawMode = true
 
-        // Set up resize signal handling
+        // Set up resize signal handling (async-signal-safe: only sets a flag)
         signal(SIGWINCH, { _ in
-            NotificationCenter.default.post(
-                name: NSNotification.Name("TerminalDidResize"),
-                object: nil
-            )
+            terminalResizePending = 1
         })
 
         // Hide cursor and enable bracketed paste
@@ -88,7 +98,12 @@ public final class TerminalManager {
     public func getTerminalSize() -> (columns: Int, rows: Int) {
         var size = winsize()
 
-        guard ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &size) == 0 else {
+        #if os(Linux)
+        let request: UInt = 0x5413 // TIOCGWINSZ (not always exposed by Glibc)
+        #else
+        let request = UInt(TIOCGWINSZ)
+        #endif
+        guard ioctl(STDOUT_FILENO, request, &size) == 0 else {
             return (80, 24) // Default values
         }
 
