@@ -38,6 +38,9 @@ public class TWindow: TView {
     public var isModal: Bool = false
     /// Focus owner before this window was presented modally (restored on close)
     weak var previousFocusedView: TView?
+    /// Original frame while the window is zoomed; nil when not zoomed
+    var unzoomedFrame: Rect?
+    public var isZoomed: Bool { unzoomedFrame != nil }
 
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
@@ -57,13 +60,34 @@ public class TWindow: TView {
         }
     }
 
+    /// Toggles between the current frame and filling the desktop's usable area
+    @MainActor
+    public func toggleZoom() {
+        guard allowResizing else { return }
+        if let saved = unzoomedFrame {
+            frame = saved
+            unzoomedFrame = nil
+        } else if let desktop = superview as? TDesktop {
+            unzoomedFrame = frame
+            frame = desktop.arrangeArea()
+        }
+    }
+
     @MainActor
     open override func handleCommand(_ command: TEvent.Command) -> Bool {
-        if command == .close {
+        switch command {
+        case .close:
             close()
             return true
+        case .zoom:
+            toggleZoom()
+            return true
+        case .resize:
+            (superview as? TDesktop)?.beginKeyboardMoveResize(for: self)
+            return true
+        default:
+            return super.handleCommand(command)
         }
-        return super.handleCommand(command)
     }
 
     @MainActor

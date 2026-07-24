@@ -215,6 +215,8 @@ open class TApplication {
                     statusLine.frame = Rect(x: 0, y: rows - 1, width: cols, height: 1)
                 }
             }
+            // Windows outside the new bounds would be unreachable
+            desktop.clampWindowsToBounds()
             redraw()
         }
     }

@@ -43,6 +43,10 @@ struct InputExample {
                         keyDescription = "Shift+Tab"
                     case .altF3:
                         keyDescription = "Alt+F3"
+                    case .ctrlF5:
+                        keyDescription = "Ctrl+F5"
+                    case .shiftF6:
+                        keyDescription = "Shift+F6"
                     case .backspace:
                         keyDescription = "Backspace"
                     case .delete:

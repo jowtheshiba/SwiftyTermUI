@@ -14,6 +14,9 @@ public class TDesktop: TView {
     private var resizeStartPoint: Point = Point(x: 0, y: 0)
     private var resizeStartFrame: Rect = Rect(x: 0, y: 0, width: 0, height: 0)
     public var menuBarHeight: Int = 0 // Height of menu bar to avoid cursor going under it
+    /// Window being moved/resized with the keyboard (Size/Move mode), if any
+    public private(set) weak var keyboardArrangeWindow: TWindow?
+    private var arrangeStartFrame: Rect = Rect(x: 0, y: 0, width: 0, height: 0)
     
     public init(frame: Rect, backgroundChar: Character = "░", backgroundAttr: TextAttributes = TextAttributes()) {
         self.backgroundChar = backgroundChar
@@ -137,28 +140,220 @@ public class TDesktop: TView {
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         switch event {
-        case .key, .paste:
-            // 1. An open overlay (popup menu) owns keyboard input
-            if let overlay = subviews.reversed().first(where: { !($0 is TWindow) && $0.isVisible && $0.findFocusedView() != nil }) {
-                overlay.handleEvent(event)
+        case .key(let key):
+            // Size/Move mode owns the keyboard until Enter/Esc
+            if let window = keyboardArrangeWindow {
+                handleArrangeKey(key, for: window)
                 return
             }
-            // 2. A modal window blocks input to everything else
-            if let modal = activeModal {
-                modal.handleEvent(event)
-                return
-            }
-            // 3. Status line hotkeys are global
-            for view in subviews where view is TStatusLine {
-                view.handleEvent(event)
-            }
-            // 4. Route to the window owning focus, else the topmost window
-            let target = subviews.reversed().first { $0 is TWindow && $0.isVisible && $0.findFocusedView() != nil }
-                ?? subviews.reversed().first { $0 is TWindow && $0.isVisible }
-            target?.handleEvent(event)
+            routeFocusedEvent(event)
+        case .paste:
+            routeFocusedEvent(event)
         default:
             super.handleEvent(event)
         }
+    }
+
+    @MainActor
+    private func routeFocusedEvent(_ event: TEvent) {
+        // 1. An open overlay (popup menu) owns keyboard input
+        if let overlay = subviews.reversed().first(where: { !($0 is TWindow) && $0.isVisible && $0.findFocusedView() != nil }) {
+            overlay.handleEvent(event)
+            return
+        }
+        // 2. A modal window blocks input to everything else
+        if let modal = activeModal {
+            modal.handleEvent(event)
+            return
+        }
+        // 3. Status line hotkeys are global
+        for view in subviews where view is TStatusLine {
+            view.handleEvent(event)
+        }
+        // 4. Route to the window owning focus, else the topmost window
+        let target = subviews.reversed().first { $0 is TWindow && $0.isVisible && $0.findFocusedView() != nil }
+            ?? subviews.reversed().first { $0 is TWindow && $0.isVisible }
+        target?.handleEvent(event)
+    }
+
+    @MainActor
+    public override func handleCommand(_ command: TEvent.Command) -> Bool {
+        switch command {
+        case .next:
+            focusNextWindow()
+            return true
+        case .previous:
+            focusNextWindow(backward: true)
+            return true
+        case .tile:
+            tileWindows()
+            return true
+        case .cascade:
+            cascadeWindows()
+            return true
+        default:
+            return super.handleCommand(command)
+        }
+    }
+
+    // MARK: - Window management
+
+    /// The desktop area windows are arranged in: everything except the
+    /// menu bar row(s) and a visible status line
+    public func arrangeArea() -> Rect {
+        let top = menuBarHeight
+        let hasStatusLine = subviews.contains { $0 is TStatusLine && $0.isVisible }
+        let bottom = hasStatusLine ? 1 : 0
+        return Rect(x: 0, y: top, width: frame.width, height: max(0, frame.height - top - bottom))
+    }
+
+    /// Activates the next (or previous) window in z-order
+    @MainActor
+    public func focusNextWindow(backward: Bool = false) {
+        guard activeModal == nil else { return }
+        let windows = subviews.compactMap { $0 as? TWindow }.filter { $0.isVisible }
+        guard windows.count > 1 else { return }
+
+        let active = windows.last { $0.findFocusedView() != nil } ?? windows.last!
+        guard let index = windows.firstIndex(where: { $0 === active }) else { return }
+        let offset = backward ? windows.count - 1 : 1
+        let target = windows[(index + offset) % windows.count]
+
+        bringWindowToFront(target)
+        focus(window: target)
+    }
+
+    /// Arranges tileable windows (style .window) in a grid
+    @MainActor
+    public func tileWindows() {
+        guard activeModal == nil else { return }
+        let windows = subviews.compactMap { $0 as? TWindow }.filter { $0.isVisible && $0.style == .window }
+        guard !windows.isEmpty else { return }
+
+        let area = arrangeArea()
+        guard area.width > 0, area.height > 0 else { return }
+
+        let count = windows.count
+        let columns = Int(Double(count).squareRoot().rounded(.up))
+        let rows = (count + columns - 1) / columns
+
+        for (index, window) in windows.enumerated() {
+            let column = index % columns
+            let row = index / columns
+            let cellWidth = area.width / columns
+            let cellHeight = area.height / rows
+            // Last column/row absorbs the remainder
+            let width = column == columns - 1 ? area.width - cellWidth * (columns - 1) : cellWidth
+            let height = row == rows - 1 ? area.height - cellHeight * (rows - 1) : cellHeight
+            window.unzoomedFrame = nil
+            window.frame = Rect(
+                x: area.x + column * cellWidth,
+                y: area.y + row * cellHeight,
+                width: max(window.minWidth, width),
+                height: max(window.minHeight, height)
+            )
+        }
+    }
+
+    /// Arranges tileable windows (style .window) in a staggered cascade
+    @MainActor
+    public func cascadeWindows() {
+        guard activeModal == nil else { return }
+        let windows = subviews.compactMap { $0 as? TWindow }.filter { $0.isVisible && $0.style == .window }
+        guard !windows.isEmpty else { return }
+
+        let area = arrangeArea()
+        guard area.width > 0, area.height > 0 else { return }
+
+        let steps = windows.count - 1
+        let width = max(1, area.width - steps * 2)
+        let height = max(1, area.height - steps)
+
+        for (index, window) in windows.enumerated() {
+            window.unzoomedFrame = nil
+            window.frame = Rect(
+                x: area.x + index * 2,
+                y: area.y + index,
+                width: max(window.minWidth, width),
+                height: max(window.minHeight, height)
+            )
+        }
+    }
+
+    /// Brings every window back into the desktop bounds (e.g. after a
+    /// terminal resize); zoomed windows are re-fitted to the new area
+    @MainActor
+    public func clampWindowsToBounds() {
+        for view in subviews {
+            guard let window = view as? TWindow else { continue }
+            if window.isZoomed {
+                window.frame = arrangeArea()
+                continue
+            }
+            var f = window.frame
+            f.width = min(f.width, frame.width)
+            f.height = min(f.height, frame.height)
+            f.x = max(0, min(f.x, frame.width - f.width))
+            f.y = max(0, min(f.y, frame.height - f.height))
+            window.frame = f
+        }
+    }
+
+    // MARK: - Keyboard Size/Move mode
+
+    /// Enters Size/Move mode: arrows move the window, Shift+arrows resize it,
+    /// Enter commits, Esc restores the original frame
+    @MainActor
+    public func beginKeyboardMoveResize(for window: TWindow) {
+        guard keyboardArrangeWindow == nil else { return }
+        keyboardArrangeWindow = window
+        arrangeStartFrame = window.frame
+        window.isDragging = true // border highlight
+    }
+
+    @MainActor
+    private func endKeyboardMoveResize(cancelled: Bool) {
+        guard let window = keyboardArrangeWindow else { return }
+        if cancelled {
+            window.frame = arrangeStartFrame
+        }
+        window.isDragging = false
+        keyboardArrangeWindow = nil
+    }
+
+    @MainActor
+    private func handleArrangeKey(_ key: Key, for window: TWindow) {
+        switch key {
+        case .up: nudge(window, dx: 0, dy: -1)
+        case .down: nudge(window, dx: 0, dy: 1)
+        case .left: nudge(window, dx: -1, dy: 0)
+        case .right: nudge(window, dx: 1, dy: 0)
+        case .shiftUp: stretch(window, dw: 0, dh: -1)
+        case .shiftDown: stretch(window, dw: 0, dh: 1)
+        case .shiftLeft: stretch(window, dw: -1, dh: 0)
+        case .shiftRight: stretch(window, dw: 1, dh: 0)
+        case .enter: endKeyboardMoveResize(cancelled: false)
+        case .escape: endKeyboardMoveResize(cancelled: true)
+        default: break
+        }
+    }
+
+    @MainActor
+    private func nudge(_ window: TWindow, dx: Int, dy: Int) {
+        let maxX = max(0, frame.width - window.frame.width)
+        let maxY = max(0, frame.height - window.frame.height)
+        window.frame.x = max(0, min(window.frame.x + dx, maxX))
+        window.frame.y = max(0, min(window.frame.y + dy, maxY))
+    }
+
+    @MainActor
+    private func stretch(_ window: TWindow, dw: Int, dh: Int) {
+        guard window.allowResizing else { return }
+        window.unzoomedFrame = nil
+        let maxWidth = max(window.minWidth, frame.width - window.frame.x)
+        let maxHeight = max(window.minHeight, frame.height - window.frame.y)
+        window.frame.width = max(window.minWidth, min(window.frame.width + dw, maxWidth))
+        window.frame.height = max(window.minHeight, min(window.frame.height + dh, maxHeight))
     }
 
     @MainActor
@@ -318,7 +513,8 @@ public class TDesktop: TView {
     @MainActor
     private func resize(window: TWindow, to globalPoint: Point) {
         guard window.allowResizing else { return }
-        
+        window.unzoomedFrame = nil // manual resize discards zoom state
+
         let deltaX = globalPoint.x - resizeStartPoint.x
         let deltaY = globalPoint.y - resizeStartPoint.y
         

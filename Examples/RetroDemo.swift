@@ -43,17 +43,25 @@ struct RetroDemo {
         ])
         
         let arrangeSubmenu = [
-            TMenuItem(title: "Tile", action: {}),
-            TMenuItem(title: "Cascade", action: {})
+            TMenuItem(title: "Tile", action: { TApplication.shared.postCommand(.tile) }),
+            TMenuItem(title: "Cascade", action: { TApplication.shared.postCommand(.cascade) })
         ]
         
         let windowMenu = TMenu(title: "Window", items: [
-            TMenuItem(title: "Size/Move", action: {}, shortcut: "Ctrl+F5"),
-            TMenuItem(title: "Zoom", action: {}, shortcut: "F5"),
+            TMenuItem(title: "Size/Move", action: {
+                TApplication.shared.postCommand(.resize)
+            }, shortcut: "Ctrl+F5", shortcutKey: .ctrlF5),
+            TMenuItem(title: "Zoom", action: {
+                TApplication.shared.postCommand(.zoom)
+            }, shortcut: "F5", shortcutKey: .f5),
             TMenuItem(title: "Arrange", submenu: arrangeSubmenu),
             TMenuItem.separator,
-            TMenuItem(title: "Next", action: {}, shortcut: "F6"),
-            TMenuItem(title: "Previous", action: {}, shortcut: "Shift+F6"),
+            TMenuItem(title: "Next", action: {
+                TApplication.shared.postCommand(.next)
+            }, shortcut: "F6", shortcutKey: .f6),
+            TMenuItem(title: "Previous", action: {
+                TApplication.shared.postCommand(.previous)
+            }, shortcut: "Shift+F6", shortcutKey: .shiftF6),
             TMenuItem(title: "Close", action: {
                 TApplication.shared.postCommand(.close)
             }, shortcut: "Alt+F3", shortcutKey: .altF3)

@@ -13,6 +13,16 @@ public enum TEvent {
         case quit
         case submit
         case cancel
+        /// Toggle maximize of the active window
+        case zoom
+        /// Keyboard move/resize mode (arrows move, Shift+arrows resize)
+        case resize
+        /// Activate the next / previous window
+        case next
+        case previous
+        /// Arrange desktop windows
+        case tile
+        case cascade
     }
     
     public struct MouseEvent: Sendable {

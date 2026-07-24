@@ -96,5 +96,9 @@ let package = Package(
             path: "Examples",
             sources: ["FileDialogExample.swift"]
         ),
+        .testTarget(
+            name: "RetroVisionTests",
+            dependencies: ["RetroVision", "SwiftyTermUI"]
+        ),
     ]
 )
