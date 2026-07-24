@@ -75,6 +75,17 @@ public final class SwiftyTermUI {
         screenBuffer.getCell(row: row, column: column)
     }
 
+    /// Restricts subsequent drawing to the given rectangle.
+    /// Nested pushes intersect with the current clip; every push must be
+    /// balanced by a popClip().
+    public func pushClip(row: Int, column: Int, width: Int, height: Int) {
+        screenBuffer.pushClip(row: row, column: column, width: width, height: height)
+    }
+
+    public func popClip() {
+        screenBuffer.popClip()
+    }
+
     public func drawCell(row: Int, column: Int, cell: Cell) {
         addChar(row: row, column: column, character: cell.character, attributes: cell.attributes, foregroundColor: cell.foregroundColor, backgroundColor: cell.backgroundColor)
     }

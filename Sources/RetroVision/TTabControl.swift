@@ -112,11 +112,13 @@ public class TTabControl: TView {
         
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
+        tui.pushClip(row: origin.y, column: origin.x, width: frame.width, height: frame.height)
+        defer { tui.popClip() }
         let (contentFg, contentBg) = RetroTextUtils.resolvedContentColors(for: self)
         let borderFg: Color = (contentFg == .black) ? .brightWhite : .white
         
-        let activeFg: Color = .brightWhite
-        let activeBg: Color = .blue
+        let activeFg: Color = TTheme.current.tabActive.fg
+        let activeBg: Color = TTheme.current.tabActive.bg
         
         layoutTabs()
         

@@ -22,6 +22,9 @@ public final class ScreenBuffer {
     private var width: Int
     private var height: Int
     private let lock = NSLock()
+    /// Active clip rectangles; each push intersects with the previous top,
+    /// so nested clips can only shrink the writable area
+    private var clipStack: [(minX: Int, minY: Int, maxX: Int, maxY: Int)] = []
 
     public var columns: Int { width }
     public var rows: Int { height }
@@ -33,11 +36,42 @@ public final class ScreenBuffer {
         self.previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
     }
 
+    func pushClip(row: Int, column: Int, width: Int, height: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var minX = column
+        var minY = row
+        var maxX = column + width
+        var maxY = row + height
+        if let top = clipStack.last {
+            minX = max(minX, top.minX)
+            minY = max(minY, top.minY)
+            maxX = min(maxX, top.maxX)
+            maxY = min(maxY, top.maxY)
+        }
+        clipStack.append((minX, minY, maxX, maxY))
+    }
+
+    func popClip() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if !clipStack.isEmpty {
+            clipStack.removeLast()
+        }
+    }
+
+    private func isWithinClip(row: Int, column: Int) -> Bool {
+        guard let top = clipStack.last else { return true }
+        return column >= top.minX && column < top.maxX && row >= top.minY && row < top.maxY
+    }
+
     func setCell(row: Int, column: Int, character: Character, attributes: TextAttributes = TextAttributes(), foregroundColor: Color = .default, backgroundColor: Color = .default) {
         lock.lock()
         defer { lock.unlock() }
 
-        guard isValidPosition(row: row, column: column) else {
+        guard isValidPosition(row: row, column: column), isWithinClip(row: row, column: column) else {
             return
         }
 
@@ -55,16 +89,17 @@ public final class ScreenBuffer {
 
         var col = column
         for char in text {
-            guard isValidPosition(row: row, column: col) else {
+            guard col < width else {
                 break
             }
-
-            current[row][col] = Cell(
-                character: char,
-                attributes: attributes,
-                foregroundColor: foregroundColor,
-                backgroundColor: backgroundColor
-            )
+            if isValidPosition(row: row, column: col), isWithinClip(row: row, column: col) {
+                current[row][col] = Cell(
+                    character: char,
+                    attributes: attributes,
+                    foregroundColor: foregroundColor,
+                    backgroundColor: backgroundColor
+                )
+            }
             col += 1
         }
     }
@@ -151,6 +186,7 @@ public final class ScreenBuffer {
         self.height = height
         current = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
         previous = Array(repeating: Array(repeating: Cell.empty(), count: width), count: height)
+        clipStack.removeAll()
     }
 
     public func getCell(row: Int, column: Int) -> Cell {

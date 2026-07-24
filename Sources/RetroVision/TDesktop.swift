@@ -27,9 +27,11 @@ public class TDesktop: TView {
     @MainActor
     public override func draw() {
         guard isVisible else { return }
-        
+
         let tui = SwiftyTermUI.shared
-        
+        tui.pushClip(row: frame.y, column: frame.x, width: frame.width, height: frame.height)
+        defer { tui.popClip() }
+
         // Фон одним fillRect вместо цикла по каждой ячейке — быстрее перерисовка
         tui.fillRect(
             row: frame.y,
@@ -38,8 +40,8 @@ public class TDesktop: TView {
             height: frame.height,
             character: backgroundChar,
             attributes: backgroundAttr,
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.desktopFill.fg,
+            backgroundColor: TTheme.current.desktopFill.bg
         )
         
         // Draw subviews (windows + overlays) with dialog priority
@@ -75,8 +77,8 @@ public class TDesktop: TView {
             column: cursorPosition.x,
             character: "╳",
             attributes: [.bold],
-            foregroundColor: .black,
-            backgroundColor: .brightWhite
+            foregroundColor: TTheme.current.mouseCursor.fg,
+            backgroundColor: TTheme.current.mouseCursor.bg
         )
         previousCursorPosition = cursorPosition
     }
@@ -112,8 +114,8 @@ public class TDesktop: TView {
             column: newPos.x,
             character: "╳",
             attributes: [.bold],
-            foregroundColor: .black,
-            backgroundColor: .brightWhite
+            foregroundColor: TTheme.current.mouseCursor.fg,
+            backgroundColor: TTheme.current.mouseCursor.bg
         )
     }
     

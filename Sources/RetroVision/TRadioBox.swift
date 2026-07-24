@@ -35,8 +35,8 @@ public class TRadioBox: TView {
         
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
-        let controlFg: Color = .black
-        let controlBg: Color = .indexed(30)
+        let controlFg: Color = TTheme.current.control.fg
+        let controlBg: Color = TTheme.current.control.bg
         
         tui.fillRect(
             row: origin.y,

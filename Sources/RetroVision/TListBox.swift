@@ -44,10 +44,10 @@ public class TListBox: TView {
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         
-        let fg: Color = .black
-        let bg: Color = .indexed(30)
-        let selFg: Color = .brightWhite
-        let selBg: Color = .green
+        let fg: Color = TTheme.current.control.fg
+        let bg: Color = TTheme.current.control.bg
+        let selFg: Color = TTheme.current.listSelection.fg
+        let selBg: Color = TTheme.current.listSelection.bg
         
         tui.fillRect(
             row: origin.y,

@@ -54,8 +54,8 @@ public class TPopupMenu: TView {
             height: frame.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .black
+            foregroundColor: TTheme.current.shadowColor,
+            backgroundColor: TTheme.current.shadowColor
         )
         
         // Draw background
@@ -66,8 +66,8 @@ public class TPopupMenu: TView {
             height: frame.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
         // Draw borders
@@ -76,19 +76,19 @@ public class TPopupMenu: TView {
             column: origin.x,
             text: "┌" + String(repeating: "─", count: frame.width - 2) + "┐",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         tui.drawString(
             row: origin.y + frame.height - 1,
             column: origin.x,
             text: "└" + String(repeating: "─", count: frame.width - 2) + "┘",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
-        let selectedBg: Color = .green
+        let selectedBg: Color = TTheme.current.menuItemSelected.bg
         
         // Draw items
         for (index, item) in items.enumerated() {
@@ -100,8 +100,8 @@ public class TPopupMenu: TView {
                     column: origin.x,
                     text: "├" + String(repeating: "─", count: frame.width - 2) + "┤",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
             } else {
                 tui.drawChar(
@@ -109,21 +109,21 @@ public class TPopupMenu: TView {
                     column: origin.x,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 tui.drawChar(
                     row: itemY,
                     column: origin.x + frame.width - 1,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 
                 let isSelected = index == selectedIndex
-                let itemFg: Color = isSelected ? .brightWhite : .black
-                let itemBg: Color = isSelected ? selectedBg : .white
+                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
+                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
                 let itemText = buildItemLine(item, contentWidth: frame.width - 2)
                 
                 tui.drawString(

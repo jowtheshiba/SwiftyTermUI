@@ -30,8 +30,8 @@ public class TStatusLine: TView {
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
         
-        let fg: Color = .white
-        let bg: Color = .blue
+        let fg: Color = TTheme.current.statusLine.fg
+        let bg: Color = TTheme.current.statusLine.bg
         
         tui.fillRect(
             row: origin.y,
@@ -59,7 +59,7 @@ public class TStatusLine: TView {
                 column: currentX,
                 text: keyText,
                 attributes: [.bold],
-                foregroundColor: .brightWhite,
+                foregroundColor: TTheme.current.statusKey,
                 backgroundColor: bg
             )
             currentX += keyText.count

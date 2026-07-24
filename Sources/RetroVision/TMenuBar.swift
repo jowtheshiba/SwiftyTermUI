@@ -66,8 +66,8 @@ public class TMenuBar: TView {
         
         // Draw Bar Background
         // Color: Black on Grey (White/LightGrey)
-        let fg: Color = .black
-        let bg: Color = .white // ANSI White is usually Light Grey
+        let fg: Color = TTheme.current.menuBar.fg
+        let bg: Color = TTheme.current.menuBar.bg
         
         // Fill the entire bar
         tui.fillRect(
@@ -89,8 +89,8 @@ public class TMenuBar: TView {
             let isSelected = isMenuOpen && index == selectedMenuIndex
             
             // Highlight selected menu
-            let menuFg: Color = isSelected ? .white : .black
-            let menuBg: Color = isSelected ? .black : .white
+            let menuFg: Color = isSelected ? TTheme.current.menuBarSelected.fg : TTheme.current.menuBar.fg
+            let menuBg: Color = isSelected ? TTheme.current.menuBarSelected.bg : TTheme.current.menuBar.bg
             
             tui.drawString(
                 row: globalPos.y,
@@ -132,8 +132,8 @@ public class TMenuBar: TView {
             height: dropdownLayout.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .black
+            foregroundColor: TTheme.current.shadowColor,
+            backgroundColor: TTheme.current.shadowColor
         )
         
         // Draw dropdown background
@@ -144,8 +144,8 @@ public class TMenuBar: TView {
             height: dropdownLayout.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
         // Draw border (single line for dropdown)
@@ -155,8 +155,8 @@ public class TMenuBar: TView {
             column: dropdownLayout.x,
             text: "┌" + String(repeating: "─", count: dropdownLayout.width - 2) + "┐",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
         // Bottom
@@ -165,11 +165,11 @@ public class TMenuBar: TView {
             column: dropdownLayout.x,
             text: "└" + String(repeating: "─", count: dropdownLayout.width - 2) + "┘",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
-        let selectedBg: Color = .green
+        let selectedBg: Color = TTheme.current.menuItemSelected.bg
         
         // Draw items
         for (index, item) in menu.items.enumerated() {
@@ -182,8 +182,8 @@ public class TMenuBar: TView {
                     column: dropdownLayout.x,
                     text: "├" + String(repeating: "─", count: dropdownLayout.width - 2) + "┤",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
             } else {
                 // Draw left border
@@ -192,8 +192,8 @@ public class TMenuBar: TView {
                     column: dropdownLayout.x,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 
                 // Draw right border
@@ -202,13 +202,13 @@ public class TMenuBar: TView {
                     column: dropdownLayout.x + dropdownLayout.width - 1,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 
                 let isSelected = index == selectedItemIndex
-                let itemFg: Color = isSelected ? .brightWhite : .black
-                let itemBg: Color = isSelected ? selectedBg : .white
+                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
+                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
                 
                 let itemText = buildItemLine(item, contentWidth: dropdownLayout.width - 2)
                 
@@ -609,7 +609,7 @@ public class TMenuBar: TView {
     @MainActor
     private func drawSubmenu(_ items: [TMenuItem], layout: MenuLayout, selectedIndex: Int) {
         let tui = SwiftyTermUI.shared
-        let selectedBg: Color = .green
+        let selectedBg: Color = TTheme.current.menuItemSelected.bg
         
         tui.fillRect(
             row: layout.y + 1,
@@ -618,8 +618,8 @@ public class TMenuBar: TView {
             height: layout.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .black
+            foregroundColor: TTheme.current.shadowColor,
+            backgroundColor: TTheme.current.shadowColor
         )
         
         tui.fillRect(
@@ -629,8 +629,8 @@ public class TMenuBar: TView {
             height: layout.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
         tui.drawString(
@@ -638,16 +638,16 @@ public class TMenuBar: TView {
             column: layout.x,
             text: "┌" + String(repeating: "─", count: layout.width - 2) + "┐",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         tui.drawString(
             row: layout.y + layout.height - 1,
             column: layout.x,
             text: "└" + String(repeating: "─", count: layout.width - 2) + "┘",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .white
+            foregroundColor: TTheme.current.menuItem.fg,
+            backgroundColor: TTheme.current.menuItem.bg
         )
         
         for (index, item) in items.enumerated() {
@@ -658,8 +658,8 @@ public class TMenuBar: TView {
                     column: layout.x,
                     text: "├" + String(repeating: "─", count: layout.width - 2) + "┤",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
             } else {
                 tui.drawChar(
@@ -667,21 +667,21 @@ public class TMenuBar: TView {
                     column: layout.x,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 tui.drawChar(
                     row: itemY,
                     column: layout.x + layout.width - 1,
                     character: "│",
                     attributes: [],
-                    foregroundColor: .black,
-                    backgroundColor: .white
+                    foregroundColor: TTheme.current.menuItem.fg,
+                    backgroundColor: TTheme.current.menuItem.bg
                 )
                 
                 let isSelected = index == selectedIndex
-                let itemFg: Color = isSelected ? .brightWhite : .black
-                let itemBg: Color = isSelected ? selectedBg : .white
+                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
+                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
                 let itemText = buildItemLine(item, contentWidth: layout.width - 2)
                 
                 tui.drawString(

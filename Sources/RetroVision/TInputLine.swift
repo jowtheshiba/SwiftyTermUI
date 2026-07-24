@@ -59,8 +59,8 @@ public class TInputLine: TView {
         let drawHeight = max(1, frame.height)
         
         // Input field: fixed width, blue background (Turbo Vision style)
-        let fg: Color = .white
-        let bg: Color = .blue
+        let fg: Color = TTheme.current.inputLine.fg
+        let bg: Color = TTheme.current.inputLine.bg
         
         tui.fillRect(
             row: origin.y,
@@ -86,8 +86,8 @@ public class TInputLine: TView {
             var charFg = fg
             
             if let (selStart, selEnd) = selRange, charIndex >= selStart && charIndex < selEnd {
-                charBg = .white
-                charFg = .black
+                charBg = TTheme.current.inputSelection.bg
+                charFg = TTheme.current.inputSelection.fg
             }
             
             tui.drawChar(
@@ -107,7 +107,7 @@ public class TInputLine: TView {
                 column: cursorColumn,
                 character: "_",
                 attributes: [],
-                foregroundColor: .brightWhite,
+                foregroundColor: TTheme.current.inputCursor,
                 backgroundColor: bg
             )
         }

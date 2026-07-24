@@ -1,20 +1,22 @@
 import SwiftyTermUI
 
 enum RetroTextUtils {
+    @MainActor
     static func resolvedContentColors(for view: TView) -> (fg: Color, bg: Color) {
+        let theme = TTheme.current
         var current: TView? = view
         while let node = current {
             if let window = node as? TWindow {
                 switch window.style {
                 case .window:
-                    return (.white, .blue)
+                    return (theme.windowContent.fg, theme.windowContent.bg)
                 case .dialog:
-                    return (.black, .white)
+                    return (theme.dialogContent.fg, theme.dialogContent.bg)
                 }
             }
             current = node.superview
         }
-        return (.black, .white)
+        return (theme.dialogContent.fg, theme.dialogContent.bg)
     }
     
     static func clampText(_ text: String, maxWidth: Int) -> String {

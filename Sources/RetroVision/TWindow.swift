@@ -112,24 +112,23 @@ public class TWindow: TView {
         let contentFg: Color
         let contentBg: Color
         
+        let theme = TTheme.current
         switch style {
         case .window:
-            // Editor Style: Blue background, White text
-            frameFg = .white
-            frameBg = .blue
-            contentFg = .white
-            contentBg = .blue
+            frameFg = theme.windowFrame.fg
+            frameBg = theme.windowFrame.bg
+            contentFg = theme.windowContent.fg
+            contentBg = theme.windowContent.bg
         case .dialog:
-            // Dialog Style: Grey background, Black text
-            frameFg = .brightWhite // Bright white borders on grey
-            frameBg = .white // ANSI White is Grey
-            contentFg = .black
-            contentBg = .white
+            frameFg = theme.dialogFrame.fg
+            frameBg = theme.dialogFrame.bg
+            contentFg = theme.dialogContent.fg
+            contentBg = theme.dialogContent.bg
         }
         
         let borderHighlight = isDragging || isResizing
-        let borderFg: Color = borderHighlight ? .brightGreen : frameFg
-        let titleFg: Color = borderHighlight ? .brightGreen : frameFg
+        let borderFg: Color = borderHighlight ? theme.frameHighlight : frameFg
+        let titleFg: Color = borderHighlight ? theme.frameHighlight : frameFg
         
         // 1. Draw Shadow
         // Shadow is offset by (1, 1) and is usually black/dark grey
@@ -142,10 +141,15 @@ public class TWindow: TView {
             height: frame.height,
             character: " ",
             attributes: [],
-            foregroundColor: .black,
-            backgroundColor: .black // Shadow color
+            foregroundColor: theme.shadowColor,
+            backgroundColor: theme.shadowColor
         )
         
+        // Clip everything except the shadow to the window's frame so that
+        // overflowing child views cannot draw outside the window
+        tui.pushClip(row: globalPos.y, column: globalPos.x, width: frame.width, height: frame.height)
+        defer { tui.popClip() }
+
         // 2. Draw Frame Background
         tui.fillRect(
             row: globalPos.y,
@@ -267,7 +271,7 @@ public class TWindow: TView {
                 column: globalPos.x + 2,
                 text: "[■]",
                 attributes: [],
-                foregroundColor: isDragging ? titleFg : .green,
+                foregroundColor: isDragging ? titleFg : theme.closeButton,
                 backgroundColor: frameBg
             )
         }

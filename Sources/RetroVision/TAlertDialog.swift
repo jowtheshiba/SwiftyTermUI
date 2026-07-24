@@ -36,8 +36,10 @@ public final class TAlertDialog: TDialog {
     
     @MainActor
     public override func draw() {
+        super.draw()
+
         let tui = SwiftyTermUI.shared
-        
+
         // Draw icon and message in content area
         let globalPos = localToGlobal(Point(x: 0, y: 0))
         

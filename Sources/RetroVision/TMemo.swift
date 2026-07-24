@@ -102,8 +102,8 @@ public class TMemo: TView {
                 if let (selStart, selEnd) = selRange {
                     let pos = TextPosition(row: lineIndex, column: charIndex)
                     if pos >= selStart && pos < selEnd {
-                        charBg = .white
-                        charFg = .black
+                        charBg = TTheme.current.inputSelection.bg
+                        charFg = TTheme.current.inputSelection.fg
                     }
                 }
                 

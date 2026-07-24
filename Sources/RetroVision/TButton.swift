@@ -44,8 +44,8 @@ public class TButton: TView {
         // Focused: White on Green (Bright)
         // Pressed: same colors as normal (no color shift)
         
-        let fg: Color = isFocused ? .brightWhite : .black
-        let bg: Color = .green
+        let fg: Color = isFocused ? TTheme.current.buttonFocusedText : TTheme.current.button.fg
+        let bg: Color = TTheme.current.button.bg
         
         // Draw Button Body
         // Format: [ Title ]
@@ -89,7 +89,7 @@ public class TButton: TView {
         // Shadow is cast to the right and bottom
         // Only if not pressed (simulates depression)
         if !isPressed {
-            let shadowForeground: Color = .black
+            let shadowForeground: Color = TTheme.current.shadowColor
             let shadowBackground = resolvedShadowBackgroundColor()
             
             // Right shadow column
@@ -212,20 +212,21 @@ public class TButton: TView {
     
 
     
+    @MainActor
     private func resolvedShadowBackgroundColor() -> Color {
         var current: TView? = self
         while let view = current {
             if let window = view as? TWindow {
                 switch window.style {
                 case .window:
-                    return .blue
+                    return TTheme.current.windowContent.bg
                 case .dialog:
-                    return .white
+                    return TTheme.current.dialogContent.bg
                 }
             }
             current = view.superview
         }
-        return .white
+        return TTheme.current.dialogContent.bg
     }
 }
 
