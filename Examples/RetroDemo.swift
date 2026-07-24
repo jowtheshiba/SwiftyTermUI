@@ -16,7 +16,7 @@ struct RetroDemo {
             TMenuItem.separator,
             TMenuItem(title: "Exit", action: {
                 TApplication.shared.postCommand(.quit)
-            }, shortcut: "Alt+X")
+            }, shortcut: "Alt+X", shortcutKey: .alt("x"))
         ])
         
         let editMenu = TMenu(title: "Edit", items: [
@@ -26,15 +26,15 @@ struct RetroDemo {
             TMenuItem(title: "Cut", action: {
                 if let memo = app.desktop.findFocusedView() as? TMemo { memo.cutSelection() }
                 else if let input = app.desktop.findFocusedView() as? TInputLine { input.cutSelection() }
-            }, shortcut: "Shift+Del"),
+            }, shortcut: "Shift+Del", shortcutKey: .shiftDelete),
             TMenuItem(title: "Copy", action: {
                 if let memo = app.desktop.findFocusedView() as? TMemo { memo.copySelection() }
                 else if let input = app.desktop.findFocusedView() as? TInputLine { input.copySelection() }
-            }, shortcut: "Ctrl+Ins"),
+            }, shortcut: "Ctrl+Ins", shortcutKey: .ctrlInsert),
             TMenuItem(title: "Paste", action: {
                 if let memo = app.desktop.findFocusedView() as? TMemo { memo.pasteFromClipboard() }
                 else if let input = app.desktop.findFocusedView() as? TInputLine { input.pasteFromClipboard() }
-            }, shortcut: "Shift+Ins"),
+            }, shortcut: "Shift+Ins", shortcutKey: .shiftInsert),
             TMenuItem.separator,
             TMenuItem(title: "Clear", action: {
                 if let memo = app.desktop.findFocusedView() as? TMemo { memo.deleteSelection() }
@@ -56,7 +56,7 @@ struct RetroDemo {
             TMenuItem(title: "Previous", action: {}, shortcut: "Shift+F6"),
             TMenuItem(title: "Close", action: {
                 TApplication.shared.postCommand(.close)
-            }, shortcut: "Alt+F3")
+            }, shortcut: "Alt+F3", shortcutKey: .altF3)
         ])
         
         let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()

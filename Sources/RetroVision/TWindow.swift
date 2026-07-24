@@ -12,6 +12,8 @@ public class TWindow: TView {
     public var isDragging: Bool = false
     public var isResizing: Bool = false
     public var allowResizing: Bool = true
+    /// Whether the window shows a working [■] close button in the title bar
+    public var allowClosing: Bool = true
     // Backwards-compat alias
     public var allowsResize: Bool {
         get { allowResizing }
@@ -265,7 +267,7 @@ public class TWindow: TView {
         
         // 5. Draw Close Button [■]
         // Typically at top-left: [ ] or [■]
-        if frame.width > 5 {
+        if allowClosing, frame.width > 5 {
             tui.drawString(
                 row: globalPos.y,
                 column: globalPos.x + 2,

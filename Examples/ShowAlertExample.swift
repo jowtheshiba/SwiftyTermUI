@@ -12,11 +12,11 @@ struct ShowAlertExample {
         let fileMenu = TMenu(title: "File", items: [
             TMenuItem(title: "Show Alert", action: {
                 showAlert()
-            }, shortcut: "F5"),
+            }, shortcut: "F5", shortcutKey: .f5),
             TMenuItem.separator,
             TMenuItem(title: "Exit", action: {
                 TApplication.shared.postCommand(.quit)
-            }, shortcut: "Alt+X")
+            }, shortcut: "Alt+X", shortcutKey: .alt("x"))
         ])
         
         let helpMenu = TMenu(title: "Help", items: [

@@ -42,6 +42,7 @@ public enum Key: Equatable {
 
     case f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12
     case shiftF10
+    case altF3
 
     // MARK: - Control combinations
 
@@ -309,6 +310,8 @@ public final class InputHandler: NSObject {
         ("\u{1B}[3;2~", .shiftDelete),
         ("\u{1B}[2;2~", .shiftInsert),
         ("\u{1B}[2;5~", .ctrlInsert),
+        ("\u{1B}[1;3R", .altF3),
+        ("\u{1B}[13;3~", .altF3),
         ("\u{1B}OP", .f1),
         ("\u{1B}OQ", .f2),
         ("\u{1B}OR", .f3),

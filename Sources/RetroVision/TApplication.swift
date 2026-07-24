@@ -137,6 +137,11 @@ open class TApplication {
                     needsFullRedraw = true
                     return
                 }
+                // Global menu shortcuts (item key bindings) fire with the menu closed
+                if menuBar.handleShortcut(key) {
+                    needsFullRedraw = true
+                    return
+                }
             }
 
             desktop.handleEvent(tEvent)

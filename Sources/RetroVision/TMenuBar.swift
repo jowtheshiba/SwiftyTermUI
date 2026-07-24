@@ -3,22 +3,27 @@ import SwiftyTermUI
 public struct TMenuItem {
     public var title: String
     public var action: (() -> Void)?
+    /// Display text for the shortcut, e.g. "Alt+X" (drawn right-aligned)
     public var shortcut: String?
+    /// Actual key binding: pressing it fires `action` even when the menu is closed
+    public var shortcutKey: Key?
     public var submenu: [TMenuItem]?
     public var isSeparator: Bool
-    
-    public init(title: String, action: (() -> Void)? = nil, shortcut: String? = nil) {
+
+    public init(title: String, action: (() -> Void)? = nil, shortcut: String? = nil, shortcutKey: Key? = nil) {
         self.title = title
         self.action = action
         self.shortcut = shortcut
+        self.shortcutKey = shortcutKey
         self.submenu = nil
         self.isSeparator = false
     }
-    
+
     public init(title: String, shortcut: String? = nil, submenu: [TMenuItem]) {
         self.title = title
         self.action = nil
         self.shortcut = shortcut
+        self.shortcutKey = nil
         self.submenu = submenu
         self.isSeparator = false
     }
@@ -443,6 +448,48 @@ public class TMenuBar: TView {
         return false // Event not handled
     }
     
+    /// Fires the action of a menu item bound to `key` (searching submenus too).
+    /// Returns true when a binding was found and fired.
+    @MainActor
+    @discardableResult
+    public func handleShortcut(_ key: Key) -> Bool {
+        guard !isMenuOpen else { return false }
+        for menu in menus {
+            if fireShortcut(key, in: menu.items) {
+                return true
+            }
+        }
+        return false
+    }
+
+    @MainActor
+    private func fireShortcut(_ key: Key, in items: [TMenuItem]) -> Bool {
+        for item in items where !item.isSeparator {
+            if let bound = item.shortcutKey, bound == key, let action = item.action {
+                action()
+                return true
+            }
+            if let submenu = item.submenu, fireShortcut(key, in: submenu) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// The menu opened by Alt+<letter>: an explicit ~X~ hot key in the title,
+    /// or its first letter
+    private func menuIndex(forAltChar char: Character) -> Int? {
+        let target = String(char).lowercased().first
+        for (index, menu) in menus.enumerated() {
+            let (display, hotKey, _) = RetroTextUtils.parseHotKey(menu.title)
+            let menuHot = hotKey ?? display.lowercased().first
+            if menuHot == target {
+                return index
+            }
+        }
+        return nil
+    }
+
     @MainActor
     private func handleKeyEvent(_ key: Key) -> Bool {
         // F10 to activate menu bar
@@ -453,7 +500,16 @@ public class TMenuBar: TView {
             isSubmenuOpen = false
             return true
         }
-        
+
+        // Alt+<letter> opens the matching menu directly
+        if !isMenuOpen, case .alt(let char) = key, let index = menuIndex(forAltChar: char) {
+            isMenuOpen = true
+            selectedMenuIndex = index
+            selectedItemIndex = -1
+            isSubmenuOpen = false
+            return true
+        }
+
         if !isMenuOpen {
             return false
         }

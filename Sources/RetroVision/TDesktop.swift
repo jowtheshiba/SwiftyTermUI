@@ -232,7 +232,12 @@ public class TDesktop: TView {
 
         focus(window: window)
         bringWindowToFront(window)
-        
+
+        if isCloseButtonHit(window: window, at: event.position) {
+            window.close()
+            return true
+        }
+
         if isResizeHandleHit(window: window, at: event.position) {
             startResizing(window: window, at: event.position)
             return true
@@ -348,6 +353,13 @@ public class TDesktop: TView {
         return nil
     }
     
+    /// The [■] close button occupies columns x+2...x+4 of the title row
+    private func isCloseButtonHit(window: TWindow, at point: Point) -> Bool {
+        guard window.allowClosing, window.frame.width > 5 else { return false }
+        let frame = window.globalFrame
+        return point.y == frame.y && point.x >= frame.x + 2 && point.x <= frame.x + 4
+    }
+
     private func isTitleBarHit(window: TWindow, at point: Point) -> Bool {
         let frame = window.globalFrame
         return point.y == frame.y && point.x >= frame.x && point.x < frame.x + frame.width
