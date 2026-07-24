@@ -32,6 +32,10 @@ public class TWindow: TView {
     
     public var onDrawContent: ((Rect) -> Void)?
     public var onClose: (() -> Void)?
+    /// Modal windows receive all input exclusively while on the desktop
+    public var isModal: Bool = false
+    /// Focus owner before this window was presented modally (restored on close)
+    weak var previousFocusedView: TView?
 
     public init(frame: Rect, title: String, style: WindowStyle = .window) {
         self.title = title
@@ -44,7 +48,11 @@ public class TWindow: TView {
     @MainActor
     open func close() {
         onClose?()
+        let restore = previousFocusedView
         removeFromSuperview()
+        if isModal, let restore = restore {
+            RetroTextUtils.focus(view: restore)
+        }
     }
 
     @MainActor
@@ -58,13 +66,12 @@ public class TWindow: TView {
 
     @MainActor
     public override func handleEvent(_ event: TEvent) {
-        // Tab/Shift+Tab cycle focus between focusable child views,
-        // but only in the window that currently owns focus
+        // Tab/Shift+Tab cycle focus between focusable child views.
+        // The desktop delivers key events only to the active window,
+        // so interception here is safe even before any child is focused.
         if case .key(let key) = event, key == .tab || key == .shiftTab {
-            if findFocusedView() != nil {
-                moveFocus(backward: key == .shiftTab)
-                return
-            }
+            moveFocus(backward: key == .shiftTab)
+            return
         }
         super.handleEvent(event)
     }

@@ -14,12 +14,8 @@ class FileDialogApp: TApplication {
             self?.showFileDialog()
         })
         
-        let exitMenuItem = TMenuItem(title: "Exit", action: {
-            // Send Ctrl+C equivalent event to stop the loop
-            let quitEvent = TEvent.key(.ctrl("c"))
-            TApplication.shared.desktop.handleEvent(quitEvent)
-            SwiftyTermUI.shared.shutdown()
-            exit(0)
+        let exitMenuItem = TMenuItem(title: "Exit", action: { [weak self] in
+            self?.postCommand(.quit)
         })
         
         fileMenu.items.append(openMenuItem)
@@ -41,9 +37,7 @@ class FileDialogApp: TApplication {
         fileDialog.onCancel = { [weak self] in
             self?.showMessage(text: "File selection cancelled.")
         }
-        desktop.addSubview(fileDialog)
-        fileDialog.isFocused = true
-        fileDialog.inputLine.isFocused = true
+        present(modal: fileDialog)
     }
     
     private func showMessage(text: String) {
@@ -52,13 +46,12 @@ class FileDialogApp: TApplication {
         msgBox.addSubview(label)
         
         let okBtn = TButton(frame: Rect(x: 14, y: 5, width: 10, height: 1), title: "OK", action: { [weak msgBox] in
-            msgBox?.removeFromSuperview()
+            msgBox?.close()
         })
+        okBtn.isDefault = true
         msgBox.addSubview(okBtn)
-        
-        desktop.addSubview(msgBox)
-        msgBox.isFocused = true
-        okBtn.isFocused = true
+
+        present(modal: msgBox)
     }
 }
 

@@ -109,13 +109,4 @@ public final class TAlertDialog: TDialog {
         return index > 0 ? index : nil
     }
     
-    @MainActor
-    public override func handleEvent(_ event: TEvent) {
-        switch event {
-        case .key(.escape):
-            removeFromSuperview()
-        default:
-            super.handleEvent(event)
-        }
-    }
 }

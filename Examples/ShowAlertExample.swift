@@ -14,9 +14,8 @@ struct ShowAlertExample {
                 showAlert()
             }, shortcut: "F5"),
             TMenuItem.separator,
-            TMenuItem(title: "Exit", action: { 
-                SwiftyTermUI.shared.shutdown()
-                exit(0)
+            TMenuItem(title: "Exit", action: {
+                TApplication.shared.postCommand(.quit)
             }, shortcut: "Alt+X")
         ])
         
@@ -68,7 +67,7 @@ struct ShowAlertExample {
             message: "Test alert"
         )
         
-        TApplication.shared.desktop.addSubview(alert)
+        TApplication.shared.present(modal: alert)
     }
     
     @MainActor
@@ -86,6 +85,6 @@ struct ShowAlertExample {
             message: "Show Alert Example\nDemonstrates TAlertDialog"
         )
         
-        TApplication.shared.desktop.addSubview(alert)
+        TApplication.shared.present(modal: alert)
     }
 }

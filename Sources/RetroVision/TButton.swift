@@ -3,8 +3,11 @@ import SwiftyTermUI
 
 public class TButton: TView {
     public override var canFocus: Bool { true }
+    public override var consumesEnterKey: Bool { true }
     public var title: String
     public var action: () -> Void
+    /// The dialog's default button, triggered by Enter (see TDialog.defaultButton)
+    public var isDefault: Bool = false
     
     public var isPressed: Bool = false
     private var isMouseDownInside = false
@@ -146,25 +149,30 @@ public class TButton: TView {
         }
     }
     
+    /// Presses the button programmatically with the Turbo Vision press effect
+    @MainActor
+    public func press() {
+        isPressed = true
+        TApplication.shared.redraw()
+        usleep(actionDelayMicroseconds)
+        isPressed = false
+        action()
+    }
+
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         switch event {
         case .key(let key):
             if isFocused {
                 if key == .enter || key == .character(" ") {
-                    // Turbo Vision press effect for keyboard
-                    isPressed = true
-                    TApplication.shared.redraw()
-                    usleep(actionDelayMicroseconds)
-                    isPressed = false
-                    action()
+                    press()
                 }
             }
-            
+
         default:
             break
         }
-        
+
         super.handleEvent(event)
     }
     

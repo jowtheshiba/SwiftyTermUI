@@ -122,10 +122,73 @@ public class TDesktop: TView {
         cursorPosition = clampToDesktop(globalPosition)
     }
     
+    /// The topmost visible modal window, if any. While present it owns all input.
+    public var activeModal: TWindow? {
+        for view in subviews.reversed() {
+            if let window = view as? TWindow, window.isVisible, window.isModal {
+                return window
+            }
+        }
+        return nil
+    }
+
+    @MainActor
+    public override func handleEvent(_ event: TEvent) {
+        switch event {
+        case .key, .paste:
+            // 1. An open overlay (popup menu) owns keyboard input
+            if let overlay = subviews.reversed().first(where: { !($0 is TWindow) && $0.isVisible && $0.findFocusedView() != nil }) {
+                overlay.handleEvent(event)
+                return
+            }
+            // 2. A modal window blocks input to everything else
+            if let modal = activeModal {
+                modal.handleEvent(event)
+                return
+            }
+            // 3. Status line hotkeys are global
+            for view in subviews where view is TStatusLine {
+                view.handleEvent(event)
+            }
+            // 4. Route to the window owning focus, else the topmost window
+            let target = subviews.reversed().first { $0 is TWindow && $0.isVisible && $0.findFocusedView() != nil }
+                ?? subviews.reversed().first { $0 is TWindow && $0.isVisible }
+            target?.handleEvent(event)
+        default:
+            super.handleEvent(event)
+        }
+    }
+
     @MainActor
     public override func handleMouseEvent(_ event: TEvent.MouseEvent) -> Bool {
         cursorPosition = clampToDesktop(event.position)
-        
+
+        // Overlays (popup menus) get events first, including clicks outside
+        // their bounds — an open popup consumes everything until dismissed
+        for view in subviews.reversed() where !(view is TWindow) && view.isVisible {
+            if view.handleMouseEvent(event) {
+                return true
+            }
+        }
+
+        if let modal = activeModal {
+            var consumed = false
+            switch event.action {
+            case .down:
+                consumed = handleMouseDown(event)
+            case .drag:
+                consumed = handleMouseDrag(event)
+            case .up:
+                consumed = handleMouseUp(event)
+            default:
+                break
+            }
+            if !consumed, modal.contains(globalPoint: event.position) {
+                _ = modal.handleMouseEvent(event)
+            }
+            return true // Modal swallows everything outside itself
+        }
+
         var consumed = false
         switch event.action {
         case .down:
@@ -140,11 +203,11 @@ public class TDesktop: TView {
         default:
             break
         }
-        
+
         if !consumed {
             return super.handleMouseEvent(event)
         }
-        
+
         return consumed
     }
     
@@ -159,7 +222,12 @@ public class TDesktop: TView {
             resizingWindow = nil
             return false
         }
-        
+
+        // Clicks on background windows are swallowed while a modal is up
+        if let modal = activeModal, window !== modal {
+            return true
+        }
+
         focus(window: window)
         bringWindowToFront(window)
         

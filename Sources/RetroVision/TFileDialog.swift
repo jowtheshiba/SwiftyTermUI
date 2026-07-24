@@ -46,11 +46,11 @@ public class TFileDialog: TDialog {
             guard let self = self else { return }
             self.confirmSelection()
         })
-        
+        okButton.isDefault = true
+
         cancelButton = TButton(frame: Rect(x: 35, y: 17, width: 12, height: 1), title: "Cancel", action: { [weak self] in
             guard let self = self else { return }
-            self.onCancel?()
-            self.removeFromSuperview()
+            self.handleCommand(.cancel)
         })
         
         addSubview(okButton)
@@ -79,6 +79,16 @@ public class TFileDialog: TDialog {
         }
     }
     
+    @MainActor
+    public override func handleCommand(_ command: TEvent.Command) -> Bool {
+        if command == .cancel {
+            onCancel?()
+            close()
+            return true
+        }
+        return super.handleCommand(command)
+    }
+
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         super.handleEvent(event)
@@ -126,6 +136,6 @@ public class TFileDialog: TDialog {
         }
         
         onFileSelected?(finalPath)
-        removeFromSuperview()
+        close()
     }
 }

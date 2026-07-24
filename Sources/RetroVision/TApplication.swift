@@ -127,8 +127,16 @@ open class TApplication {
             }
             
             let tEvent = TEvent.key(key)
-            if let menuBar = menuBar {
+            // The menu bar is disabled while a modal window is up.
+            // When a menu is open it owns the keyboard: don't double-deliver
+            // navigation keys to the desktop.
+            if let menuBar = menuBar, desktop.activeModal == nil {
+                let wasMenuOpen = menuBar.isMenuOpen
                 menuBar.handleEvent(tEvent)
+                if wasMenuOpen || menuBar.isMenuOpen {
+                    needsFullRedraw = true
+                    return
+                }
             }
 
             desktop.handleEvent(tEvent)
@@ -176,7 +184,7 @@ open class TApplication {
             }
             
             var menuBarHandled = false
-            if let menuBar = menuBar, menuBar.isVisible {
+            if let menuBar = menuBar, menuBar.isVisible, desktop.activeModal == nil {
                 menuBarHandled = menuBar.handleMouseEvent(mouseEvent)
                 if isMoveOnly && menuBarHandled {
                     menuBar.draw()
@@ -245,6 +253,22 @@ open class TApplication {
         return translated
     }
     
+    /// Presents a window modally: it is placed above other windows and
+    /// receives all input exclusively until closed. Focus is moved to its
+    /// first focusable child and restored to the previous owner on close.
+    @MainActor
+    public func present(modal window: TWindow) {
+        window.isModal = true
+        window.previousFocusedView = desktop.findFocusedView()
+        desktop.addSubview(window)
+        if let first = window.focusableDescendants().first {
+            RetroTextUtils.focus(view: first)
+        } else {
+            RetroTextUtils.focus(view: window)
+        }
+        redraw()
+    }
+
     /// Posts a framework command.
     /// `.quit` stops the run loop; other commands are first offered to the
     /// focused view and its superview chain, then broadcast to the desktop.

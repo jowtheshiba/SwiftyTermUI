@@ -44,7 +44,7 @@ public class TMenuBar: TView {
     public var menus: [TMenu]
     
     // State for dropdown
-    private var isMenuOpen: Bool = false
+    public private(set) var isMenuOpen: Bool = false
     private var selectedMenuIndex: Int = 0
     private var selectedItemIndex: Int = -1
     

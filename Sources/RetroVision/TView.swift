@@ -19,6 +19,8 @@ open class TView {
     public var isFocused: Bool = false
     /// Whether the view participates in Tab/Shift+Tab focus traversal
     open var canFocus: Bool { false }
+    /// Whether the view uses the Enter key itself (blocks a dialog's default button)
+    open var consumesEnterKey: Bool { false }
     public var contextMenu: (() -> [TMenuItem])?
     
     public init(frame: Rect) {
@@ -55,6 +57,14 @@ open class TView {
             if handleCommand(command) { return }
             for view in subviews.reversed() {
                 view.handleEvent(event)
+            }
+        case .key, .paste:
+            // Focused-chain routing: deliver only to the subview owning focus
+            for view in subviews.reversed() where view.isVisible {
+                if view.findFocusedView() != nil {
+                    view.handleEvent(event)
+                    return
+                }
             }
         default:
             // Pass event to subviews (simple responder chain)
