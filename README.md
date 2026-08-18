@@ -6,9 +6,10 @@
 
 &nbsp;
 
-SwiftyTermUI consists of two main parts:
+SwiftyTermUI consists of three main parts:
 - **Low-level engine**: A Swift analogue of `ncurses` for direct terminal control and drawing primitives, built from scratch without any external dependencies.
 - **High-level framework**: An attempt to recreate the classic `Turbo Vision` experience in a modern context.
+- **SwiftyGraph**: A charting module for rendering line, bar, scatter, heatmap, and pseudo-3D charts directly in the terminal.
 
 ## Main API
 
@@ -45,6 +46,30 @@ tui.shutdown()
 swift build
 ```
 
+## SwiftyGraph
+
+SwiftyGraph is a bundled charting library built on top of SwiftyTermUI. It renders line charts, bar charts, scatter plots, heatmaps, and pseudo-3D bar charts directly in the terminal using Braille-based canvases.
+
+<img width="1840" height="1400" alt="SwiftyGraph Sine & Cosine example" src="scr/graph_demo.png" />
+
+```swift
+import SwiftyGraph
+import SwiftyTermUI
+
+LineChart(
+    series: [
+        GraphSeries(name: "sin", values: sine, color: GraphPalette.color(at: 0)),
+        GraphSeries(name: "cos", values: cosine, color: GraphPalette.color(at: 1)),
+    ],
+    title: "Sine & Cosine"
+).render(in: tui, row: row, column: column, width: width, height: height)
+```
+
+Try the interactive demo, which cycles through all chart types:
+```bash
+swift run GraphDemo
+```
+
 ## Examples
 
 SwiftyTermUI includes several examples demonstrating different features:
@@ -58,6 +83,7 @@ SwiftyTermUI includes several examples demonstrating different features:
 | `ComponentsExample.swift` | High-level components (Menu, Form, Button, TextBox, ProgressBar) |
 | `OptimizationExample.swift` | Demonstrates render optimization features and statistics |
 | `RetroDemo.swift` | A comprehensive demo of retro-styled UI components and interactions |
+| `GraphDemo.swift` | Interactive showcase of SwiftyGraph chart types (line, bar, scatter, heatmap, pseudo-3D) |
 
 Run any example with:
 ```bash

@@ -17,6 +17,10 @@ let package = Package(
             name: "RetroVision",
             targets: ["RetroVision"]
         ),
+        .library(
+            name: "SwiftyGraph",
+            targets: ["SwiftyGraph"]
+        ),
         .executable(
             name: "HelloTermUI",
             targets: ["HelloTermUI"]
@@ -44,6 +48,10 @@ let package = Package(
         .executable(
             name: "FileDialogExample",
             targets: ["FileDialogExample"]
+        ),
+        .executable(
+            name: "GraphDemo",
+            targets: ["GraphDemo"]
         ),
     ],
     targets: [
@@ -99,6 +107,16 @@ let package = Package(
         .testTarget(
             name: "RetroVisionTests",
             dependencies: ["RetroVision", "SwiftyTermUI"]
+        ),
+        .target(
+            name: "SwiftyGraph",
+            dependencies: ["SwiftyTermUI"]
+        ),
+        .executableTarget(
+            name: "GraphDemo",
+            dependencies: ["SwiftyGraph", "SwiftyTermUI"],
+            path: "Examples",
+            sources: ["GraphDemo.swift"]
         ),
     ]
 )
