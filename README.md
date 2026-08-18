@@ -4,6 +4,8 @@
 
 <img width="811" height="698" alt="scr" src="https://github.com/user-attachments/assets/f2334d0d-e7ad-435f-8a5b-cf88311cd9d2" />
 
+<img width="1840" height="1400" alt="SwiftyGraph Sine & Cosine example" src="scr/graph_demo.png" />
+
 &nbsp;
 
 SwiftyTermUI consists of three main parts:
@@ -40,17 +42,9 @@ if let event = tui.readEvent() {
 tui.shutdown()
 ```
 
-## Building
-
-```bash
-swift build
-```
-
 ## SwiftyGraph
 
 SwiftyGraph is a bundled charting library built on top of SwiftyTermUI. It renders line charts, bar charts, scatter plots, heatmaps, and pseudo-3D bar charts directly in the terminal using Braille-based canvases.
-
-<img width="1840" height="1400" alt="SwiftyGraph Sine & Cosine example" src="scr/graph_demo.png" />
 
 ```swift
 import SwiftyGraph
