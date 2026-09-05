@@ -24,13 +24,28 @@ public final class SwiftyTermUI {
         inputHandler = InputHandler()
     }
 
-    public func initialize() throws {
+    public func initialize(useAlternateScreen: Bool = true) throws {
         lock.lock()
         defer { lock.unlock() }
 
-        guard !isInitialized else { return }
+        guard !isInitialized else {
+            // Re-entrant call: honor a late alt-screen request.
+            if useAlternateScreen && !terminal.isAlternateScreenActive {
+                terminal.enterAlternateScreen()
+                renderOptimizer.invalidate()
+            }
+            return
+        }
 
-        try terminal.initialize()
+        // Throws before any escape sequence is emitted, so a failure leaves
+        // no half-entered state and shutdown() stays a safe no-op.
+        try terminal.initialize(useAlternateScreen: useAlternateScreen)
+        if terminal.isAlternateScreenActive {
+            // The fresh alt buffer shares nothing with the previously
+            // rendered state: force the first refresh() into a full repaint
+            // so no stale cells leak into the new screen.
+            renderOptimizer.invalidate()
+        }
         isInitialized = true
     }
 
@@ -41,8 +56,39 @@ public final class SwiftyTermUI {
         guard isInitialized else { return }
 
         disableMouseCapture()
+        // cleanup() runs cursor restore + 2J while still in the alt buffer
+        // and only then emits ?1049l, restoring the main screen byte-for-byte.
+        // Pair with `defer { shutdown() }` to guarantee this on every exit
+        // path, including error/throw.
         terminal.cleanup()
         isInitialized = false
+    }
+
+    // MARK: - Alternate screen buffer (DEC 1049)
+
+    /// Whether the alternate screen buffer is currently active.
+    public var isAlternateScreenActive: Bool {
+        terminal.isAlternateScreenActive
+    }
+
+    /// Enters the alternate screen buffer and invalidates the render diff
+    /// cache so the next `refresh()` fully repaints. Must be called before
+    /// the first `refresh()` when managing the buffer manually.
+    public func enterAlternateScreen() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        terminal.enterAlternateScreen()
+        renderOptimizer.invalidate()
+    }
+
+    /// Leaves the alternate screen buffer, restoring the main screen.
+    /// Prefer `shutdown()`, which additionally restores cursor/termios state.
+    public func leaveAlternateScreen() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        terminal.leaveAlternateScreen()
     }
 
     public func addChar(row: Int, column: Int, character: Character, attributes: TextAttributes = [], foregroundColor: Color = .default, backgroundColor: Color = .default) {

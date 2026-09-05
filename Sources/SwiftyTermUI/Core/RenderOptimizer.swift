@@ -206,6 +206,21 @@ final class RenderOptimizer {
         cache.clear()
     }
 
+    /// Invalidates the diff cache so the next `generateOptimizedRenderCommands`
+    /// performs a full repaint. Must be called when entering the alternate
+    /// screen buffer: the fresh alt buffer shares nothing with the previously
+    /// rendered state, so every cell has to be emitted or stale content from
+    /// an earlier session could leak into the new screen. (A dimension change
+    /// also forces a full redraw, but dimensions are usually identical, hence
+    /// the explicit reset.)
+    func invalidate() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        lastRenderedState = ScreenRenderState()
+        dirtyRegions.removeAll()
+    }
+
     /// Gets optimizer statistics for monitoring
     func getStatistics() -> OptimizerStatistics {
         lock.lock()

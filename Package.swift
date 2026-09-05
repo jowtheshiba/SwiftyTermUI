@@ -108,6 +108,10 @@ let package = Package(
             name: "RetroVisionTests",
             dependencies: ["RetroVision", "SwiftyTermUI"]
         ),
+        .testTarget(
+            name: "SwiftyTermUITests",
+            dependencies: ["SwiftyTermUI"]
+        ),
         .target(
             name: "SwiftyGraph",
             dependencies: ["SwiftyTermUI"]
