@@ -5,6 +5,7 @@ import SwiftyTermUI
 @MainActor
 open class TApplication {
     public static let shared = TApplication()
+    private var disabledCommands: Set<TEvent.Command> = []
     
 
     private var isRunning = false
@@ -20,11 +21,14 @@ open class TApplication {
     
     private lazy var _desktop: TDesktop = {
         let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()
-        return TDesktop(frame: Rect(x: 0, y: 0, width: cols, height: rows))
+        let desktop = TDesktop(frame: Rect(x: 0, y: 0, width: cols, height: rows))
+        desktop.application = self
+        return desktop
     }()
     
     public var menuBar: TMenuBar? {
         didSet {
+            menuBar?.application = self
             if let menuBar = menuBar {
                 desktop.menuBarHeight = menuBar.frame.height
             } else {
@@ -281,6 +285,7 @@ open class TApplication {
     /// focused view and its superview chain, then broadcast to the desktop.
     @MainActor
     public func postCommand(_ command: TEvent.Command) {
+        guard isCommandEnabled(command) else { return }
         if command == .quit {
             isRunning = false
             return
@@ -299,6 +304,24 @@ open class TApplication {
 
         desktop.handleEvent(.command(command))
         redraw()
+    }
+
+    public func enableCommand(_ command: TEvent.Command) {
+        guard disabledCommands.remove(command) != nil else { return }
+        broadcast(.commandSetChanged, payload: command)
+    }
+
+    public func disableCommand(_ command: TEvent.Command) {
+        guard disabledCommands.insert(command).inserted else { return }
+        broadcast(.commandSetChanged, payload: command)
+    }
+
+    public func isCommandEnabled(_ command: TEvent.Command) -> Bool {
+        !disabledCommands.contains(command)
+    }
+
+    public func broadcast(_ name: TEvent.Broadcast.Name, source: TView? = nil, payload: Any? = nil) {
+        desktop.handleEvent(.broadcast(.init(name: name, source: source, payload: payload)))
     }
 
     @MainActor

@@ -183,7 +183,7 @@ public class TPopupMenu: TView {
             if itemIndex >= 0 && itemIndex < items.count {
                 let item = items[itemIndex]
                 if !item.isSeparator {
-                    item.action?()
+                    item.perform(sender: self)
                     dismiss()
                 }
             }
@@ -209,7 +209,7 @@ public class TPopupMenu: TView {
             if selectedIndex >= 0 && selectedIndex < items.count {
                 let item = items[selectedIndex]
                 if !item.isSeparator {
-                    item.action?()
+                    item.perform(sender: self)
                     dismiss()
                 }
             }

@@ -431,4 +431,134 @@ struct RetroVisionTests {
         desktop.clampWindowsToBounds()
         #expect(window.frame == desktop.arrangeArea(), "zoomed window follows the new size")
     }
+
+    @Test func groupTracksCurrentSelectionAndRemoval() {
+        let group = TGroup(frame: Rect(x: 0, y: 0, width: 40, height: 10))
+        let label = TLabel(frame: Rect(x: 0, y: 0, width: 10, height: 1), text: "Label")
+        let first = TInputLine(frame: Rect(x: 0, y: 2, width: 10, height: 1))
+        let second = TInputLine(frame: Rect(x: 0, y: 4, width: 10, height: 1))
+
+        group.addSubview(label)
+        #expect(group.current == nil)
+        group.addSubview(first)
+        group.addSubview(second)
+        #expect(group.current === first)
+        #expect(first.isSelectedInGroup)
+
+        group.selectNext()
+        #expect(group.current === second)
+        #expect(!first.isSelectedInGroup)
+        #expect(second.isSelectedInGroup)
+
+        second.removeFromSuperview()
+        #expect(group.current === first)
+        #expect(first.isSelectedInGroup)
+    }
+
+    @Test func focusUpdatesCurrentChainAndSkipsHiddenViews() {
+        let outer = TGroup(frame: Rect(x: 0, y: 0, width: 40, height: 10))
+        let inner = TGroup(frame: Rect(x: 0, y: 0, width: 20, height: 5))
+        inner.options.insert(.selectable)
+        let input = TInputLine(frame: Rect(x: 0, y: 0, width: 10, height: 1))
+        outer.addSubview(inner)
+        inner.addSubview(input)
+
+        RetroTextUtils.focus(view: input)
+        #expect(outer.current === inner)
+        #expect(inner.current === input)
+        #expect(outer.findFocusedView() === input)
+
+        inner.isVisible = false
+        #expect(outer.findFocusedView() == nil)
+        #expect(!input.isFocused)
+    }
+
+    @Test func growModesRespondToParentResize() {
+        let group = TGroup(frame: Rect(x: 0, y: 0, width: 20, height: 10))
+        let anchored = TView(frame: Rect(x: 2, y: 2, width: 5, height: 3))
+        anchored.growMode = [.growHiX, .growHiY]
+        let moved = TView(frame: Rect(x: 10, y: 5, width: 4, height: 2))
+        moved.growMode = [.growLoX, .growLoY]
+        group.addSubview(anchored)
+        group.addSubview(moved)
+
+        group.frame = Rect(x: 0, y: 0, width: 26, height: 14)
+
+        #expect(anchored.frame == Rect(x: 2, y: 2, width: 11, height: 7))
+        #expect(moved.frame == Rect(x: 16, y: 9, width: 4, height: 2))
+    }
+
+    @Test func relativeGrowthScalesChildFrame() {
+        let group = TGroup(frame: Rect(x: 0, y: 0, width: 20, height: 10))
+        let child = TView(frame: Rect(x: 5, y: 2, width: 10, height: 4))
+        child.growMode = .growRel
+        group.addSubview(child)
+
+        group.frame = Rect(x: 0, y: 0, width: 40, height: 20)
+
+        #expect(child.frame == Rect(x: 10, y: 4, width: 20, height: 8))
+    }
+
+    @Test func customCommandsAndBroadcastsAreDelivered() {
+        let group = TGroup(frame: Rect(x: 0, y: 0, width: 20, height: 10))
+        let commandView = EventProbe(frame: Rect(x: 0, y: 0, width: 5, height: 1))
+        commandView.options.insert(.selectable)
+        let broadcastView = EventProbe(frame: Rect(x: 0, y: 2, width: 5, height: 1))
+        group.addSubview(commandView)
+        group.addSubview(broadcastView)
+        let customCommand = TEvent.Command(rawValue: 4_096)
+        let customBroadcast = TEvent.Broadcast.Name(rawValue: "modelChanged")
+
+        group.handleEvent(.command(customCommand))
+        group.handleEvent(.broadcast(.init(name: customBroadcast, source: group, payload: 42)))
+
+        #expect(commandView.commands == [customCommand])
+        #expect(commandView.broadcasts == [customBroadcast])
+        #expect(broadcastView.broadcasts == [customBroadcast])
+    }
+
+    @Test func eventMaskFiltersDelivery() {
+        let probe = EventProbe(frame: Rect(x: 0, y: 0, width: 5, height: 1))
+        probe.eventMask = [.broadcast]
+        let command = TEvent.Command(rawValue: 4_097)
+        let broadcast = TEvent.Broadcast.Name(rawValue: "refresh")
+
+        probe.handleEvent(.command(command))
+        probe.handleEvent(.broadcast(.init(name: broadcast)))
+
+        #expect(probe.commands.isEmpty)
+        #expect(probe.broadcasts == [broadcast])
+    }
+
+    @Test func applicationCommandStateBroadcastsChanges() {
+        let app = TApplication()
+        let probe = EventProbe(frame: Rect(x: 0, y: 0, width: 5, height: 1))
+        app.desktop.addSubview(probe)
+        let command = TEvent.Command(rawValue: 4_098)
+
+        #expect(app.isCommandEnabled(command))
+        app.disableCommand(command)
+        #expect(!app.isCommandEnabled(command))
+        #expect(probe.broadcasts == [.commandSetChanged])
+
+        app.enableCommand(command)
+        #expect(app.isCommandEnabled(command))
+        #expect(probe.broadcasts == [.commandSetChanged, .commandSetChanged])
+    }
+}
+
+@MainActor
+private final class EventProbe: TView {
+    var commands: [TEvent.Command] = []
+    var broadcasts: [TEvent.Broadcast.Name] = []
+
+    override func handleCommand(_ command: TEvent.Command) -> Bool {
+        commands.append(command)
+        return true
+    }
+
+    override func handleBroadcast(_ event: TEvent.Broadcast) -> Bool {
+        broadcasts.append(event.name)
+        return false
+    }
 }

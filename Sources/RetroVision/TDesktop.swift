@@ -1,7 +1,8 @@
 import SwiftyTermUI
 
 /// The background view that contains all windows
-public class TDesktop: TView {
+public class TDesktop: TGroup {
+    weak var application: TApplication?
     private let backgroundChar: Character
     private let backgroundAttr: TextAttributes
     private var cursorPosition: Point

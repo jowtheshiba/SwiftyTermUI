@@ -2,7 +2,9 @@ import SwiftyTermUI
 
 /// Base class for all visible components in RetroVision
 open class TView {
-    public var frame: Rect
+    public var frame: Rect {
+        didSet { sizeChanged(from: oldValue) }
+    }
     public var bounds: Rect {
         Rect(x: 0, y: 0, width: frame.width, height: frame.height)
     }
@@ -13,10 +15,24 @@ open class TView {
     
     public weak var superview: TView?
     public var subviews: [TView] = []
-    
-    
-    public var isVisible: Bool = true
-    public var isFocused: Bool = false
+    public var owner: TGroup? { superview as? TGroup }
+    public var state: TViewState = [.visible, .active, .exposed]
+    public var options: TViewOptions = []
+    public var growMode: TGrowMode = []
+    public var eventMask: TEventMask = .all
+    public var isVisible: Bool {
+        get { state.contains(.visible) }
+        set { setState(.visible, enabled: newValue) }
+    }
+    public var isFocused: Bool {
+        get { state.contains(.focused) }
+        set { setState(.focused, enabled: newValue) }
+    }
+    public var isEnabled: Bool {
+        get { !state.contains(.disabled) }
+        set { setState(.disabled, enabled: !newValue) }
+    }
+    public var isSelectedInGroup: Bool { state.contains(.selected) }
     /// Whether the view participates in Tab/Shift+Tab focus traversal
     open var canFocus: Bool { false }
     /// Whether the view uses the Enter key itself (blocks a dialog's default button)
@@ -28,13 +44,20 @@ open class TView {
     }
     
     open func addSubview(_ view: TView) {
+        if view.superview === self { return }
+        view.removeFromSuperview()
         subviews.append(view)
         view.superview = self
     }
+
+    open func removeSubview(_ view: TView) {
+        guard view.superview === self else { return }
+        subviews.removeAll { $0 === view }
+        view.superview = nil
+    }
     
     open func removeFromSuperview() {
-        superview?.subviews.removeAll { $0 === self }
-        superview = nil
+        superview?.removeSubview(self)
     }
     
     @MainActor
@@ -50,12 +73,19 @@ open class TView {
     
     @MainActor
     open func handleEvent(_ event: TEvent) {
+        guard eventMask.contains(event.mask) else { return }
+        if !isEnabled, event.mask != .broadcast { return }
         switch event {
         case .mouse(let mouseEvent):
             handleMouseEvent(mouseEvent)
         case .command(let command):
             if handleCommand(command) { return }
             for view in subviews.reversed() {
+                view.handleEvent(event)
+            }
+        case .broadcast(let broadcast):
+            _ = handleBroadcast(broadcast)
+            for view in subviews {
                 view.handleEvent(event)
             }
         case .key, .paste:
@@ -79,6 +109,12 @@ open class TView {
     @discardableResult
     open func handleCommand(_ command: TEvent.Command) -> Bool {
         return false
+    }
+
+    @MainActor
+    @discardableResult
+    open func handleBroadcast(_ event: TEvent.Broadcast) -> Bool {
+        false
     }
     
     @MainActor
@@ -149,6 +185,7 @@ open class TView {
     /// Returns the focused view in this subtree, or nil if none
     @MainActor
     open func findFocusedView() -> TView? {
+        guard isVisible, isEnabled else { return nil }
         for view in subviews {
             if let found = view.findFocusedView() { return found }
         }
@@ -180,6 +217,48 @@ open class TView {
         for view in subviews {
             view.clearFocus()
         }
+    }
+
+    open func sizeChanged(from oldSize: Rect) {}
+
+    public func setState(_ member: TViewState, enabled: Bool) {
+        if enabled {
+            state.insert(member)
+        } else {
+            state.remove(member)
+        }
+        if (member.contains(.disabled) && enabled) || (member.contains(.visible) && !enabled) {
+            clearFocusState()
+        }
+    }
+
+    private func clearFocusState() {
+        state.remove([.focused, .selected])
+        for view in subviews {
+            view.clearFocusState()
+        }
+    }
+
+    func applyGrowth(from parentOldFrame: Rect, deltaWidth: Int, deltaHeight: Int) {
+        if growMode.contains(.relative), parentOldFrame.width > 0, parentOldFrame.height > 0 {
+            let newParentWidth = parentOldFrame.width + deltaWidth
+            let newParentHeight = parentOldFrame.height + deltaHeight
+            frame = Rect(
+                x: frame.x * newParentWidth / parentOldFrame.width,
+                y: frame.y * newParentHeight / parentOldFrame.height,
+                width: frame.width * newParentWidth / parentOldFrame.width,
+                height: frame.height * newParentHeight / parentOldFrame.height
+            )
+            return
+        }
+        var next = frame
+        if growMode.contains(.lowX) { next.x += deltaWidth }
+        if growMode.contains(.highX) { next.width += deltaWidth }
+        if growMode.contains(.lowY) { next.y += deltaHeight }
+        if growMode.contains(.highY) { next.height += deltaHeight }
+        next.width = max(0, next.width)
+        next.height = max(0, next.height)
+        frame = next
     }
     
     /// Brings a subview to the front (end of the array == front)
@@ -220,6 +299,19 @@ open class TView {
         guard let items = contextMenu?(), !items.isEmpty else { return }
         let position = preferredContextMenuPosition()
         showContextMenu(at: position, items: items)
+    }
+
+    @MainActor
+    public func sendCommand(_ command: TEvent.Command) {
+        var root: TView = self
+        while let parent = root.superview {
+            root = parent
+        }
+        if let desktop = root as? TDesktop, let application = desktop.application {
+            application.postCommand(command)
+        } else {
+            root.handleEvent(.command(command))
+        }
     }
 }
 

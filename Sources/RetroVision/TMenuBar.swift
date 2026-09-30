@@ -3,6 +3,7 @@ import SwiftyTermUI
 public struct TMenuItem {
     public var title: String
     public var action: (() -> Void)?
+    public var command: TEvent.Command?
     /// Display text for the shortcut, e.g. "Alt+X" (drawn right-aligned)
     public var shortcut: String?
     /// Actual key binding: pressing it fires `action` even when the menu is closed
@@ -10,9 +11,10 @@ public struct TMenuItem {
     public var submenu: [TMenuItem]?
     public var isSeparator: Bool
 
-    public init(title: String, action: (() -> Void)? = nil, shortcut: String? = nil, shortcutKey: Key? = nil) {
+    public init(title: String, action: (() -> Void)? = nil, command: TEvent.Command? = nil, shortcut: String? = nil, shortcutKey: Key? = nil) {
         self.title = title
         self.action = action
+        self.command = command
         self.shortcut = shortcut
         self.shortcutKey = shortcutKey
         self.submenu = nil
@@ -22,6 +24,7 @@ public struct TMenuItem {
     public init(title: String, shortcut: String? = nil, submenu: [TMenuItem]) {
         self.title = title
         self.action = nil
+        self.command = nil
         self.shortcut = shortcut
         self.shortcutKey = nil
         self.submenu = submenu
@@ -32,6 +35,18 @@ public struct TMenuItem {
         var item = TMenuItem(title: "")
         item.isSeparator = true
         return item
+    }
+
+    @MainActor
+    func perform(sender: TView, application: TApplication? = nil) {
+        action?()
+        if let command {
+            if let application {
+                application.postCommand(command)
+            } else {
+                sender.sendCommand(command)
+            }
+        }
     }
 }
 
@@ -47,6 +62,7 @@ public struct TMenu {
 
 public class TMenuBar: TView {
     public var menus: [TMenu]
+    weak var application: TApplication?
     
     // State for dropdown
     public private(set) var isMenuOpen: Bool = false
@@ -380,7 +396,7 @@ public class TMenuBar: TView {
                     if itemIndex >= 0 && itemIndex < submenuItems.count {
                         let item = submenuItems[itemIndex]
                         if !item.isSeparator {
-                            item.action?()
+                            item.perform(sender: self, application: application)
                             isSubmenuOpen = false
                             isMenuOpen = false
                         }
@@ -404,7 +420,7 @@ public class TMenuBar: TView {
                             if let submenu = item.submenu, !submenu.isEmpty {
                                 openSubmenuIfAvailable()
                             } else {
-                                item.action?()
+                                item.perform(sender: self, application: application)
                                 isSubmenuOpen = false
                                 isMenuOpen = false
                             }
@@ -465,8 +481,8 @@ public class TMenuBar: TView {
     @MainActor
     private func fireShortcut(_ key: Key, in items: [TMenuItem]) -> Bool {
         for item in items where !item.isSeparator {
-            if let bound = item.shortcutKey, bound == key, let action = item.action {
-                action()
+            if let bound = item.shortcutKey, bound == key, item.action != nil || item.command != nil {
+                item.perform(sender: self, application: application)
                 return true
             }
             if let submenu = item.submenu, fireShortcut(key, in: submenu) {
@@ -562,7 +578,7 @@ public class TMenuBar: TView {
             if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
                 let item = submenuItems[selectedSubmenuItemIndex]
                 if !item.isSeparator {
-                    item.action?()
+                    item.perform(sender: self, application: application)
                     isSubmenuOpen = false
                     isMenuOpen = false
                 }
@@ -574,7 +590,7 @@ public class TMenuBar: TView {
                 let item = menu.items[selectedItemIndex]
                 if !item.isSeparator {
                     if !openSubmenuIfAvailable() {
-                        item.action?()
+                        item.perform(sender: self, application: application)
                         isMenuOpen = false
                     }
                 }
@@ -810,4 +826,3 @@ public class TMenuBar: TView {
         return index
     }
 }
-

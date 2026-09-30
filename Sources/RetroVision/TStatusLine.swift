@@ -5,11 +5,13 @@ public struct TStatusItem {
     public let keyText: String
     public let title: String
     public let action: (() -> Void)?
+    public let command: TEvent.Command?
     
-    public init(key: Key, keyText: String, title: String, action: (() -> Void)? = nil) {
+    public init(key: Key, keyText: String, title: String, command: TEvent.Command? = nil, action: (() -> Void)? = nil) {
         self.key = key
         self.keyText = keyText
         self.title = title
+        self.command = command
         self.action = action
     }
 }
@@ -85,6 +87,9 @@ public class TStatusLine: TView {
         if case .key(let key) = event {
             for item in items where item.key == key {
                 item.action?()
+                if let command = item.command {
+                    sendCommand(command)
+                }
                 return
             }
         }

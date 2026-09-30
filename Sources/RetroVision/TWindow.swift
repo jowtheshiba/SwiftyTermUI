@@ -1,7 +1,7 @@
 import SwiftyTermUI
 
 /// A floating window with a title and border
-public class TWindow: TView {
+public class TWindow: TGroup {
     public enum WindowStyle {
         case window // Blue background (Editor)
         case dialog // Grey background (Dialog)
@@ -9,7 +9,10 @@ public class TWindow: TView {
     
     public var title: String
     public var style: WindowStyle
-    public var isDragging: Bool = false
+    public var isDragging: Bool {
+        get { state.contains(.dragging) }
+        set { setState(.dragging, enabled: newValue) }
+    }
     public var isResizing: Bool = false
     public var allowResizing: Bool = true
     /// Whether the window shows a working [■] close button in the title bar
@@ -35,7 +38,10 @@ public class TWindow: TView {
     public var onDrawContent: ((Rect) -> Void)?
     public var onClose: (() -> Void)?
     /// Modal windows receive all input exclusively while on the desktop
-    public var isModal: Bool = false
+    public var isModal: Bool {
+        get { state.contains(.modal) }
+        set { setState(.modal, enabled: newValue) }
+    }
     /// Focus owner before this window was presented modally (restored on close)
     weak var previousFocusedView: TView?
     /// Original frame while the window is zoomed; nil when not zoomed
@@ -47,6 +53,7 @@ public class TWindow: TView {
         self.style = style
         self.allowResizing = true
         super.init(frame: frame)
+        options.formUnion([.selectable, .topSelect, .framed])
     }
     
     /// Closes the window, removing it from the view hierarchy

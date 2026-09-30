@@ -9,6 +9,7 @@ public class TButton: TView {
     public override var consumesEnterKey: Bool { true }
     public var title: String
     public var action: () -> Void
+    public var command: TEvent.Command?
     /// The dialog's default button, triggered by Enter (see TDialog.defaultButton)
     public var isDefault: Bool = false
     
@@ -18,8 +19,9 @@ public class TButton: TView {
     /// Delay in microseconds before action executes (Turbo Vision style)
     public var actionDelayMicroseconds: useconds_t = 50_000  // 50ms
     
-    public init(frame: Rect, title: String, action: @escaping () -> Void) {
+    public init(frame: Rect, title: String, command: TEvent.Command? = nil, action: @escaping () -> Void = {}) {
         self.title = title
+        self.command = command
         self.action = action
         super.init(frame: frame)
     }
@@ -159,7 +161,7 @@ public class TButton: TView {
         TApplication.shared.redraw()
         usleep(actionDelayMicroseconds)
         isPressed = false
-        action()
+        trigger()
     }
 
     @MainActor
@@ -202,7 +204,7 @@ public class TButton: TView {
                 TApplication.shared.redraw()
                 usleep(actionDelayMicroseconds)
                 isPressed = false
-                action()
+                trigger()
             } else {
                 isPressed = false
             }
@@ -210,6 +212,14 @@ public class TButton: TView {
             
         default:
             return false
+        }
+    }
+
+    @MainActor
+    private func trigger() {
+        action()
+        if let command {
+            sendCommand(command)
         }
     }
     
@@ -232,4 +242,3 @@ public class TButton: TView {
         return TTheme.current.dialogContent.bg
     }
 }
-

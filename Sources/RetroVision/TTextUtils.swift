@@ -128,6 +128,14 @@ enum RetroTextUtils {
             root = parent
         }
         root.clearFocus()
+        var child = view
+        while let parent = child.superview {
+            if let group = parent as? TGroup {
+                group.setCurrent(child)
+            }
+            child = parent
+        }
+        view.setState(.selected, enabled: true)
         view.isFocused = true
     }
 }

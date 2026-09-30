@@ -6,23 +6,70 @@ public enum TEvent {
     case mouse(MouseEvent)
     case paste(String)
     case command(Command)
+    case broadcast(Broadcast)
     case nothing
     
-    public enum Command {
-        case close
-        case quit
-        case submit
-        case cancel
-        /// Toggle maximize of the active window
-        case zoom
-        /// Keyboard move/resize mode (arrows move, Shift+arrows resize)
-        case resize
-        /// Activate the next / previous window
-        case next
-        case previous
-        /// Arrange desktop windows
-        case tile
-        case cascade
+    public struct Command: Hashable, Sendable, ExpressibleByIntegerLiteral {
+        public let rawValue: Int
+
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
+
+        public init(integerLiteral value: Int) {
+            rawValue = value
+        }
+
+        public static let close = Command(rawValue: 1)
+        public static let quit = Command(rawValue: 2)
+        public static let submit = Command(rawValue: 3)
+        public static let cancel = Command(rawValue: 4)
+        public static let zoom = Command(rawValue: 5)
+        public static let resize = Command(rawValue: 6)
+        public static let next = Command(rawValue: 7)
+        public static let previous = Command(rawValue: 8)
+        public static let tile = Command(rawValue: 9)
+        public static let cascade = Command(rawValue: 10)
+    }
+
+    public struct Broadcast {
+        public struct Name: Hashable, Sendable, ExpressibleByStringLiteral {
+            public let rawValue: String
+
+            public init(rawValue: String) {
+                self.rawValue = rawValue
+            }
+
+            public init(stringLiteral value: String) {
+                rawValue = value
+            }
+
+            public static let viewAdded = Name(rawValue: "viewAdded")
+            public static let viewRemoved = Name(rawValue: "viewRemoved")
+            public static let selectionChanged = Name(rawValue: "selectionChanged")
+            public static let commandSetChanged = Name(rawValue: "commandSetChanged")
+        }
+
+        public let name: Name
+        public let source: TView?
+        public let payload: Any?
+
+        public init(name: Name, source: TView? = nil, payload: Any? = nil) {
+            self.name = name
+            self.source = source
+            self.payload = payload
+        }
+    }
+
+    public var mask: TEventMask {
+        switch self {
+        case .key: return .keyboard
+        case .mouse: return .mouse
+        case .paste: return .paste
+        case .command: return .command
+        case .broadcast: return .broadcast
+        case .nothing: return []
+        }
     }
     
     public struct MouseEvent: Sendable {

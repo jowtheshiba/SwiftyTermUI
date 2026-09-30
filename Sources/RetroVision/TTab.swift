@@ -1,6 +1,6 @@
 import SwiftyTermUI
 
-public class TTab: TView {
+public class TTab: TGroup {
     public var title: String
     
     public init(title: String) {

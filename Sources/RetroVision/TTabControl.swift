@@ -1,6 +1,6 @@
 import SwiftyTermUI
 
-public class TTabControl: TView {
+public class TTabControl: TGroup {
     
     public private(set) var tabs: [TTab] = []
     
