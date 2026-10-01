@@ -2,18 +2,61 @@ import SwiftyTermUI
 
 /// Classic Turbo Vision-style dialog window
 public class TDialog: TWindow {
+    public private(set) var modalResult: TEvent.Command?
+    public var onModalEnd: ((TEvent.Command) -> Void)?
+
     public init(frame: Rect, title: String) {
         super.init(frame: frame, title: title, style: .dialog)
         allowResizing = false
     }
 
+    func beginModal() {
+        modalResult = nil
+    }
+
     @MainActor
     public override func handleCommand(_ command: TEvent.Command) -> Bool {
-        if command == .cancel {
-            close()
+        switch command {
+        case .ok, .yes, .retry, .ignore:
+            _ = endModal(command)
             return true
+        case .cancel, .no, .abort:
+            _ = endModal(command, validating: false)
+            return true
+        case .close:
+            _ = endModal(.cancel, validating: false)
+            return true
+        default:
+            return super.handleCommand(command)
         }
-        return super.handleCommand(command)
+    }
+
+    @MainActor
+    @discardableResult
+    public override func endModal(_ command: TEvent.Command) -> Bool {
+        endModal(command, validating: true)
+    }
+
+    @MainActor
+    @discardableResult
+    public func endModal(_ command: TEvent.Command, validating: Bool) -> Bool {
+        guard modalResult == nil else { return false }
+        if validating && !valid(command) { return false }
+        modalResult = command
+        let completion = onModalEnd
+        onModalEnd = nil
+        super.close()
+        completion?(command)
+        return true
+    }
+
+    @MainActor
+    public override func close() {
+        if isModal && modalResult == nil {
+            _ = endModal(.cancel, validating: false)
+        } else {
+            super.close()
+        }
     }
 
     /// The button pressed by Enter when the focused view doesn't use Enter itself
@@ -27,7 +70,7 @@ public class TDialog: TWindow {
         if case .key(let key) = event {
             switch key {
             case .escape:
-                handleCommand(.cancel)
+                _ = handleCommand(.cancel)
                 return
             case .enter:
                 let focused = findFocusedView()

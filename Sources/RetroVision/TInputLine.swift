@@ -17,15 +17,28 @@ public class TInputLine: TView {
     public var selectionStart: Int?
     public var hasSelection: Bool { selectionStart != nil }
     public var onChange: ((String) -> Void)?
+    public var validator: TValidator? {
+        didSet {
+            if validator == nil {
+                options.remove(.validate)
+            } else {
+                options.insert(.validate)
+            }
+        }
+    }
     
     private var scrollOffset: Int = 0
     
-    public init(frame: Rect, text: String = "", maxLength: Int? = nil, isPassword: Bool = false, cursorPosition: Int = 0) {
+    public init(frame: Rect, text: String = "", maxLength: Int? = nil, isPassword: Bool = false, cursorPosition: Int = 0, validator: TValidator? = nil) {
         self.text = text
         self.maxLength = maxLength
         self.isPassword = isPassword
         self.cursorPosition = cursorPosition
+        self.validator = validator
         super.init(frame: frame)
+        if validator != nil {
+            options.insert(.validate)
+        }
         contextMenu = { [weak self] in
             guard let self else { return [] }
             return [
@@ -127,6 +140,14 @@ public class TInputLine: TView {
             }
         }
         super.handleEvent(event)
+    }
+
+    @MainActor
+    public override func valid(_ command: TEvent.Command) -> Bool {
+        if command == .cancel || command == .no || command == .abort {
+            return true
+        }
+        return validator?.isValid(text) ?? true
     }
     
     @MainActor

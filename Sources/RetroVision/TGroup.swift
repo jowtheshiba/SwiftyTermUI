@@ -93,6 +93,33 @@ open class TGroup: TView {
         current?.setState(.selected, enabled: false)
     }
 
+    @MainActor
+    open override func valid(_ command: TEvent.Command) -> Bool {
+        for view in subviews where view.isVisible && view.isEnabled {
+            if !view.valid(command) {
+                if view.canFocus {
+                    RetroTextUtils.focus(view: view)
+                } else if let focusable = view.focusableDescendants().first {
+                    RetroTextUtils.focus(view: focusable)
+                }
+                return false
+            }
+        }
+        return true
+    }
+
+    @MainActor
+    public func execView(_ dialog: TDialog) -> TEvent.Command {
+        var root: TView = self
+        while let parent = root.superview {
+            root = parent
+        }
+        guard let desktop = root as? TDesktop, let application = desktop.application else {
+            return .cancel
+        }
+        return application.execView(dialog)
+    }
+
     open override func sizeChanged(from oldSize: Rect) {
         let deltaWidth = frame.width - oldSize.width
         let deltaHeight = frame.height - oldSize.height

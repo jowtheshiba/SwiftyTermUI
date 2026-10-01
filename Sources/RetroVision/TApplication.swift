@@ -269,6 +269,7 @@ open class TApplication {
     /// first focusable child and restored to the previous owner on close.
     @MainActor
     public func present(modal window: TWindow) {
+        (window as? TDialog)?.beginModal()
         window.isModal = true
         window.previousFocusedView = desktop.findFocusedView()
         desktop.addSubview(window)
@@ -278,6 +279,43 @@ open class TApplication {
             RetroTextUtils.focus(view: window)
         }
         redraw()
+    }
+
+    public func present(modal dialog: TDialog, completion: @escaping (TEvent.Command) -> Void) {
+        let previousCompletion = dialog.onModalEnd
+        dialog.onModalEnd = { command in
+            previousCompletion?(command)
+            completion(command)
+        }
+        present(modal: dialog as TWindow)
+    }
+
+    public func execView(_ dialog: TDialog) -> TEvent.Command {
+        present(modal: dialog as TWindow)
+        while dialog.modalResult == nil && isRunning {
+            var hasEvents = false
+            var needsRedraw = false
+
+            for _ in 0..<64 {
+                guard let event = SwiftyTermUI.shared.readEvent() else { break }
+                hasEvents = true
+                handleLowLevelEvent(event, needsFullRedraw: &needsRedraw)
+                if needsRedraw {
+                    redraw()
+                    break
+                }
+            }
+
+            handleInputBlinkTick()
+            if !hasEvents {
+                Thread.sleep(forTimeInterval: 0.001)
+            }
+        }
+
+        if dialog.modalResult == nil {
+            _ = dialog.endModal(.cancel, validating: false)
+        }
+        return dialog.modalResult ?? .cancel
     }
 
     /// Posts a framework command.

@@ -545,6 +545,100 @@ struct RetroVisionTests {
         #expect(app.isCommandEnabled(command))
         #expect(probe.broadcasts == [.commandSetChanged, .commandSetChanged])
     }
+
+    @Test func modalDialogReturnsCommandAndRestoresFocus() {
+        let desktop = makeDesktop()
+        let window = TWindow(frame: Rect(x: 0, y: 0, width: 30, height: 10), title: "Window")
+        let backgroundInput = TInputLine(frame: Rect(x: 1, y: 1, width: 10, height: 1))
+        window.addSubview(backgroundInput)
+        desktop.addSubview(window)
+        RetroTextUtils.focus(view: backgroundInput)
+
+        let dialog = TDialog(frame: Rect(x: 2, y: 2, width: 20, height: 8), title: "Dialog")
+        let dialogInput = TInputLine(frame: Rect(x: 1, y: 1, width: 10, height: 1))
+        dialog.addSubview(dialogInput)
+        var result: TEvent.Command?
+        dialog.isModal = true
+        dialog.previousFocusedView = backgroundInput
+        dialog.onModalEnd = { result = $0 }
+        desktop.addSubview(dialog)
+        RetroTextUtils.focus(view: dialogInput)
+
+        #expect(dialogInput.isFocused)
+        #expect(dialogInput.endModal(.yes))
+        #expect(result == .yes)
+        #expect(dialog.modalResult == .yes)
+        #expect(dialog.superview == nil)
+        #expect(backgroundInput.isFocused)
+    }
+
+    @Test func validatorPreventsAcceptingDialog() {
+        let desktop = makeDesktop()
+        let dialog = TDialog(frame: Rect(x: 2, y: 2, width: 20, height: 8), title: "Range")
+        let input = TInputLine(
+            frame: Rect(x: 1, y: 1, width: 10, height: 1),
+            text: "99",
+            validator: TRangeValidator(1...10)
+        )
+        dialog.addSubview(input)
+        dialog.isModal = true
+        desktop.addSubview(dialog)
+        RetroTextUtils.focus(view: input)
+
+        #expect(dialog.handleCommand(.ok))
+        #expect(dialog.modalResult == nil)
+        #expect(dialog.superview === desktop)
+        #expect(input.isFocused)
+
+        input.text = "7"
+        #expect(dialog.handleCommand(.ok))
+        #expect(dialog.modalResult == .ok)
+        #expect(dialog.superview == nil)
+    }
+
+    @Test func cancelBypassesValidation() {
+        let desktop = makeDesktop()
+        let dialog = TDialog(frame: Rect(x: 2, y: 2, width: 20, height: 8), title: "Range")
+        dialog.addSubview(TInputLine(
+            frame: Rect(x: 1, y: 1, width: 10, height: 1),
+            text: "invalid",
+            validator: TRangeValidator(1...10)
+        ))
+        dialog.isModal = true
+        desktop.addSubview(dialog)
+
+        #expect(dialog.handleCommand(.cancel))
+        #expect(dialog.modalResult == .cancel)
+        #expect(dialog.superview == nil)
+    }
+
+    @Test func dialogCanBeExecutedMoreThanOnce() {
+        let desktop = makeDesktop()
+        let dialog = TDialog(frame: Rect(x: 2, y: 2, width: 20, height: 8), title: "Reusable")
+
+        dialog.beginModal()
+        dialog.isModal = true
+        desktop.addSubview(dialog)
+        #expect(dialog.endModal(.ok))
+        #expect(dialog.modalResult == .ok)
+
+        dialog.beginModal()
+        dialog.isModal = true
+        desktop.addSubview(dialog)
+        #expect(dialog.modalResult == nil)
+        #expect(dialog.endModal(.cancel, validating: false))
+        #expect(dialog.modalResult == .cancel)
+    }
+
+    @Test func standardValidatorsMatchTurboVisionInputFlow() {
+        let digits = TFilterValidator(allowedCharacters: Set("0123456789"))
+        let lookup = TStringLookupValidator(values: ["Alpha", "Beta"], caseSensitive: false)
+
+        #expect(digits.isValid("1205"))
+        #expect(!digits.isValid("12a5"))
+        #expect(lookup.isValid("alpha"))
+        #expect(!lookup.isValid("gamma"))
+    }
 }
 
 @MainActor

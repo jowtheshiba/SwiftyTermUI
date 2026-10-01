@@ -116,6 +116,11 @@ open class TView {
     open func handleBroadcast(_ event: TEvent.Broadcast) -> Bool {
         false
     }
+
+    @MainActor
+    open func valid(_ command: TEvent.Command) -> Bool {
+        true
+    }
     
     @MainActor
     @discardableResult
@@ -312,6 +317,19 @@ open class TView {
         } else {
             root.handleEvent(.command(command))
         }
+    }
+
+    @MainActor
+    @discardableResult
+    open func endModal(_ command: TEvent.Command) -> Bool {
+        var view: TView? = self
+        while let current = view {
+            if let dialog = current as? TDialog, dialog.isModal {
+                return dialog.endModal(command)
+            }
+            view = current.superview
+        }
+        return false
     }
 }
 

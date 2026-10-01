@@ -30,6 +30,12 @@ public enum TEvent {
         public static let previous = Command(rawValue: 8)
         public static let tile = Command(rawValue: 9)
         public static let cascade = Command(rawValue: 10)
+        public static let yes = Command(rawValue: 11)
+        public static let no = Command(rawValue: 12)
+        public static let abort = Command(rawValue: 13)
+        public static let retry = Command(rawValue: 14)
+        public static let ignore = Command(rawValue: 15)
+        public static let ok = submit
     }
 
     public struct Broadcast {
