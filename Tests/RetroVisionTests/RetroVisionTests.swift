@@ -639,6 +639,74 @@ struct RetroVisionTests {
         #expect(lookup.isValid("alpha"))
         #expect(!lookup.isValid("gamma"))
     }
+
+    @Test func collectionSupportsTurboVisionOperations() {
+        let collection = TCollection(["Beta"])
+
+        #expect(collection.insert("Gamma") == 1)
+        #expect(collection.insert("Alpha", at: 0) == 0)
+        #expect(collection.elements == ["Alpha", "Beta", "Gamma"])
+        #expect(collection.firstThat { $0.hasPrefix("B") } == "Beta")
+        #expect(collection.atDelete(1) == "Beta")
+        #expect(collection.elements == ["Alpha", "Gamma"])
+    }
+
+    @Test func sortedAndStringCollectionsKeepOrder() {
+        let numbers = TSortedCollection([4, 2, 3], compare: { lhs, rhs in
+            if lhs < rhs { return .orderedAscending }
+            if lhs > rhs { return .orderedDescending }
+            return .orderedSame
+        })
+
+        #expect(numbers.elements == [2, 3, 4])
+        #expect(numbers.insert(3) == 1)
+        #expect(numbers.elements == [2, 3, 4])
+        #expect(numbers.search(4).index == 2)
+        #expect(numbers.search(4).found)
+
+        let strings = TStringCollection(["beta", "Alpha"], caseSensitive: false)
+        #expect(strings.elements == ["Alpha", "beta"])
+    }
+
+    @Test func listBoxUsesCollectionAndPreservesItemsAPI() {
+        let collection = TCollection(["One", "Two"])
+        let list = TListBox(
+            frame: Rect(x: 0, y: 0, width: 12, height: 2),
+            collection: collection,
+            selectedIndex: 1
+        )
+
+        _ = collection.insert("Three")
+        list.reloadCollection()
+        list.focusItem(9)
+        #expect(list.range == 3)
+        #expect(list.selectedIndex == 2)
+        #expect(list.items == ["One", "Two", "Three"])
+
+        list.setRange(2)
+        #expect(list.range == 2)
+        #expect(list.selectedIndex == 1)
+        #expect(collection.count == 3)
+    }
+
+    @Test func groupTransfersTypedControlData() {
+        let dialog = TDialog(frame: Rect(x: 0, y: 0, width: 30, height: 12), title: "Data")
+        let input = TInputLine(frame: Rect(x: 1, y: 1, width: 10, height: 1), text: "before")
+        let checkbox = TCheckBox(frame: Rect(x: 1, y: 3, width: 10, height: 1), title: "Flag")
+        let list = TListBox(frame: Rect(x: 1, y: 5, width: 10, height: 3), items: ["A", "B", "C"])
+        dialog.addSubview(input)
+        dialog.addSubview(TLabel(frame: Rect(x: 1, y: 2, width: 10, height: 1), text: "Label"))
+        dialog.addSubview(checkbox)
+        dialog.addSubview(list)
+
+        #expect(dialog.dataSize == 3)
+        #expect(dialog.getData() == .group([.text("before"), .boolean(false), .integer(0)]))
+        #expect(dialog.setData(.group([.text("after"), .boolean(true), .integer(2)])))
+        #expect(input.text == "after")
+        #expect(checkbox.isChecked)
+        #expect(list.selectedIndex == 2)
+        #expect(!dialog.setData(.group([.text("incomplete")])))
+    }
 }
 
 @MainActor

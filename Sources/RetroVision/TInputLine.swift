@@ -149,6 +149,19 @@ public class TInputLine: TView {
         }
         return validator?.isValid(text) ?? true
     }
+
+    public override var dataSize: Int { 1 }
+
+    public override func getData() -> TViewData? {
+        .text(text)
+    }
+
+    @discardableResult
+    public override func setData(_ data: TViewData) -> Bool {
+        guard case .text(let value) = data else { return false }
+        text = value
+        return true
+    }
     
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {

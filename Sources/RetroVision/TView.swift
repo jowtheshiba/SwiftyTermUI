@@ -121,6 +121,20 @@ open class TView {
     open func valid(_ command: TEvent.Command) -> Bool {
         true
     }
+
+    @MainActor
+    open var dataSize: Int { 0 }
+
+    @MainActor
+    open func getData() -> TViewData? {
+        nil
+    }
+
+    @MainActor
+    @discardableResult
+    open func setData(_ data: TViewData) -> Bool {
+        false
+    }
     
     @MainActor
     @discardableResult

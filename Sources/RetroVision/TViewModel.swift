@@ -1,5 +1,13 @@
 import Foundation
 
+public indirect enum TViewData: Equatable, Sendable {
+    case text(String)
+    case boolean(Bool)
+    case integer(Int)
+    case strings([String])
+    case group([TViewData])
+}
+
 public struct TViewState: OptionSet, Sendable {
     public let rawValue: UInt16
 

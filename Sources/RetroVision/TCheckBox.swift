@@ -96,6 +96,22 @@ public class TCheckBox: TView {
         }
         return false
     }
+
+    @MainActor
+    public override var dataSize: Int { 1 }
+
+    @MainActor
+    public override func getData() -> TViewData? {
+        .boolean(isChecked)
+    }
+
+    @MainActor
+    @discardableResult
+    public override func setData(_ data: TViewData) -> Bool {
+        guard case .boolean(let value) = data else { return false }
+        isChecked = value
+        return true
+    }
     
     private func toggle() {
         isChecked.toggle()

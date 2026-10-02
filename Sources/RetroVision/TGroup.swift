@@ -109,6 +109,29 @@ open class TGroup: TView {
     }
 
     @MainActor
+    open override var dataSize: Int {
+        subviews.reduce(0) { $0 + $1.dataSize }
+    }
+
+    @MainActor
+    open override func getData() -> TViewData? {
+        guard dataSize > 0 else { return nil }
+        return .group(subviews.compactMap { $0.getData() })
+    }
+
+    @MainActor
+    @discardableResult
+    open override func setData(_ data: TViewData) -> Bool {
+        guard case .group(let values) = data else { return false }
+        let views = subviews.filter { $0.dataSize > 0 }
+        guard views.count == values.count else { return false }
+        for (view, value) in zip(views, values) {
+            if !view.setData(value) { return false }
+        }
+        return true
+    }
+
+    @MainActor
     public func execView(_ dialog: TDialog) -> TEvent.Command {
         var root: TView = self
         while let parent = root.superview {

@@ -101,6 +101,22 @@ public class TRadioBox: TView {
         }
         return false
     }
+
+    @MainActor
+    public override var dataSize: Int { 1 }
+
+    @MainActor
+    public override func getData() -> TViewData? {
+        .boolean(isSelected)
+    }
+
+    @MainActor
+    @discardableResult
+    public override func setData(_ data: TViewData) -> Bool {
+        guard case .boolean(let value) = data else { return false }
+        isSelected = value
+        return true
+    }
     
     private func select() {
         if !isSelected {
