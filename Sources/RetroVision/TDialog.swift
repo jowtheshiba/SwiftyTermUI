@@ -42,12 +42,25 @@ public class TDialog: TWindow {
     public func endModal(_ command: TEvent.Command, validating: Bool) -> Bool {
         guard modalResult == nil else { return false }
         if validating && !valid(command) { return false }
+        if command == .ok || command == .yes {
+            commitHistory(in: self)
+        }
         modalResult = command
         let completion = onModalEnd
         onModalEnd = nil
         super.close()
         completion?(command)
         return true
+    }
+
+    @MainActor
+    private func commitHistory(in view: TView) {
+        if let input = view as? TInputLine {
+            input.commitHistory()
+        }
+        for child in view.subviews {
+            commitHistory(in: child)
+        }
     }
 
     @MainActor

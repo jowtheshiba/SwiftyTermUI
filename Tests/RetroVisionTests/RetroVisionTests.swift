@@ -707,6 +707,98 @@ struct RetroVisionTests {
         #expect(list.selectedIndex == 2)
         #expect(!dialog.setData(.group([.text("incomplete")])))
     }
+
+    @Test func checkBoxesUseBitMaskAndHotKeys() {
+        let dialog = TDialog(frame: Rect(x: 0, y: 0, width: 30, height: 10), title: "Cluster")
+        let input = TInputLine(frame: Rect(x: 1, y: 1, width: 10, height: 1))
+        let boxes = TCheckBoxes(
+            frame: Rect(x: 1, y: 3, width: 24, height: 2),
+            items: [TClusterItem("~C~ase"), TClusterItem("~W~ords")],
+            value: 8
+        )
+        dialog.addSubview(input)
+        dialog.addSubview(boxes)
+        RetroTextUtils.focus(view: input)
+
+        dialog.handleEvent(.key(.alt("w")))
+        #expect(boxes.selectedIndex == 1)
+        #expect(boxes.isFocused)
+        #expect(boxes.value == 2)
+        #expect(boxes.isChecked(1))
+        #expect(boxes.getData() == .integer(2))
+        #expect(boxes.setData(.integer(3)))
+        #expect(boxes.isChecked(0))
+        #expect(boxes.isChecked(1))
+    }
+
+    @Test func radioButtonsSkipDisabledItems() {
+        let radios = TRadioButtons(
+            frame: Rect(x: 0, y: 0, width: 24, height: 3),
+            items: [
+                TClusterItem("First"),
+                TClusterItem("Second", isEnabled: false),
+                TClusterItem("Third")
+            ]
+        )
+        RetroTextUtils.focus(view: radios)
+
+        radios.handleEvent(.key(.down))
+        #expect(radios.selectedIndex == 2)
+        radios.handleEvent(.key(.character(" ")))
+        #expect(radios.value == 2)
+        #expect(radios.getData() == .integer(2))
+    }
+
+    @Test func historyIsSeparatedDeduplicatedAndSelectable() {
+        let firstID = 9_001
+        let secondID = 9_002
+        clearHistory(firstID)
+        clearHistory(secondID)
+        historyAdd(firstID, "one")
+        historyAdd(firstID, "two")
+        historyAdd(firstID, "one")
+        historyAdd(secondID, "other")
+
+        #expect(historyCount(firstID) == 2)
+        #expect(historyStr(firstID, 0) == "one")
+        #expect(historyStr(firstID, 1) == "two")
+        #expect(historyStr(secondID, 0) == "other")
+
+        let input = TInputLine(frame: Rect(x: 0, y: 0, width: 10, height: 1))
+        let viewer = THistoryViewer(
+            frame: Rect(x: 0, y: 0, width: 10, height: 2),
+            target: input,
+            historyID: firstID
+        )
+        viewer.choose(1)
+        #expect(input.text == "two")
+        #expect(input.cursorPosition == 3)
+    }
+
+    @Test func acceptingDialogCommitsInputHistory() {
+        let historyID = 9_003
+        clearHistory(historyID)
+        let desktop = makeDesktop()
+        let dialog = TDialog(frame: Rect(x: 0, y: 0, width: 20, height: 8), title: "History")
+        let input = TInputLine(
+            frame: Rect(x: 1, y: 1, width: 10, height: 1),
+            text: "accepted",
+            historyID: historyID
+        )
+        dialog.addSubview(input)
+        dialog.isModal = true
+        desktop.addSubview(dialog)
+
+        #expect(dialog.endModal(.ok))
+        #expect(historyStr(historyID, 0) == "accepted")
+
+        dialog.beginModal()
+        dialog.isModal = true
+        input.text = "cancelled"
+        desktop.addSubview(dialog)
+        #expect(dialog.endModal(.cancel, validating: false))
+        #expect(historyCount(historyID) == 1)
+    }
 }
 
 @MainActor

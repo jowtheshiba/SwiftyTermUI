@@ -17,6 +17,7 @@ public class TInputLine: TView {
     public var selectionStart: Int?
     public var hasSelection: Bool { selectionStart != nil }
     public var onChange: ((String) -> Void)?
+    public var historyID: Int?
     public var validator: TValidator? {
         didSet {
             if validator == nil {
@@ -29,12 +30,13 @@ public class TInputLine: TView {
     
     private var scrollOffset: Int = 0
     
-    public init(frame: Rect, text: String = "", maxLength: Int? = nil, isPassword: Bool = false, cursorPosition: Int = 0, validator: TValidator? = nil) {
+    public init(frame: Rect, text: String = "", maxLength: Int? = nil, isPassword: Bool = false, cursorPosition: Int = 0, validator: TValidator? = nil, historyID: Int? = nil) {
         self.text = text
         self.maxLength = maxLength
         self.isPassword = isPassword
         self.cursorPosition = cursorPosition
         self.validator = validator
+        self.historyID = historyID
         super.init(frame: frame)
         if validator != nil {
             options.insert(.validate)
@@ -161,6 +163,11 @@ public class TInputLine: TView {
         guard case .text(let value) = data else { return false }
         text = value
         return true
+    }
+
+    public func commitHistory() {
+        guard let historyID else { return }
+        THistoryList.add(text, id: historyID)
     }
     
     @MainActor

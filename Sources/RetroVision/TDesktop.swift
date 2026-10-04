@@ -381,7 +381,7 @@ public class TDesktop: TGroup {
             default:
                 break
             }
-            if !consumed, modal.contains(globalPoint: event.position) {
+            if !consumed, modal.contains(globalPoint: event.position) || modal is THistoryWindow {
                 _ = modal.handleMouseEvent(event)
             }
             return true // Modal swallows everything outside itself
