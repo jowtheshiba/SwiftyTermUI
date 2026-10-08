@@ -35,6 +35,10 @@ public enum TEvent {
         public static let abort = Command(rawValue: 13)
         public static let retry = Command(rawValue: 14)
         public static let ignore = Command(rawValue: 15)
+        public static let undo = Command(rawValue: 16)
+        public static let redo = Command(rawValue: 17)
+        public static let find = Command(rawValue: 18)
+        public static let replace = Command(rawValue: 19)
         public static let ok = submit
     }
 

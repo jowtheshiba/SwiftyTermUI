@@ -1,7 +1,7 @@
 import SwiftyTermUI
 
 @MainActor
-public class TMemo: TView {
+open class TMemo: TView {
     public override var canFocus: Bool { true }
     public override var consumesEnterKey: Bool { true }
     public var lines: [String] {
@@ -12,7 +12,7 @@ public class TMemo: TView {
         }
     }
     
-    public var text: String {
+    open var text: String {
         get { lines.joined(separator: "\n") }
         set { lines = Self.splitLines(newValue) }
     }
@@ -437,12 +437,12 @@ public class TMemo: TView {
     }
     
     @MainActor
-    public func clearSelection() {
+    open func clearSelection() {
         selectionStart = nil
     }
     
     @MainActor
-    public func copySelection() {
+    open func copySelection() {
         guard let (start, end) = selectedRange() else { return }
         
         if start.row == end.row {
@@ -470,18 +470,18 @@ public class TMemo: TView {
     }
     
     @MainActor
-    public func cutSelection() {
+    open func cutSelection() {
         copySelection()
         deleteSelection()
     }
     
     @MainActor
-    public func pasteFromClipboard() {
+    open func pasteFromClipboard() {
         paste(text: TClipboard.text)
     }
     
     @MainActor
-    public func paste(text textToPaste: String) {
+    open func paste(text textToPaste: String) {
         if hasSelection {
             deleteSelection()
         }
@@ -520,7 +520,7 @@ public class TMemo: TView {
     }
     
     @MainActor
-    public func deleteSelection() {
+    open func deleteSelection() {
         guard let (start, end) = selectedRange() else { return }
         
         if start.row == end.row {
@@ -549,6 +549,26 @@ public class TMemo: TView {
         cursorColumn = start.column
         clearSelection()
         clampCursor()
+    }
+
+    public func setSelection(from start: TextPosition, to end: TextPosition) {
+        selectionStart = start
+        cursorRow = end.row
+        cursorColumn = end.column
+        clampCursor()
+    }
+
+    public override var dataSize: Int { 1 }
+
+    public override func getData() -> TViewData? {
+        .text(text)
+    }
+
+    @discardableResult
+    public override func setData(_ data: TViewData) -> Bool {
+        guard case .text(let value) = data else { return false }
+        text = value
+        return true
     }
     
     private func clampCursor() {

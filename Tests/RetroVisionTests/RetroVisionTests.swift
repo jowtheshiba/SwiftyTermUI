@@ -799,6 +799,100 @@ struct RetroVisionTests {
         #expect(dialog.endModal(.cancel, validating: false))
         #expect(historyCount(historyID) == 1)
     }
+
+    @Test func editorTracksUndoRedoAndModifiedState() {
+        let editor = TEditor(frame: Rect(x: 0, y: 0, width: 20, height: 4), text: "abc")
+        var changes: [Bool] = []
+        editor.onModifiedChange = { changes.append($0) }
+        editor.cursorColumn = 3
+        RetroTextUtils.focus(view: editor)
+
+        editor.handleEvent(.key(.character("d")))
+        #expect(editor.text == "abcd")
+        #expect(editor.isModified)
+        #expect(editor.canUndo)
+        #expect(editor.valid(.undo))
+
+        editor.handleEvent(.key(.ctrl("z")))
+        #expect(editor.text == "abc")
+        #expect(!editor.isModified)
+        #expect(editor.canRedo)
+        #expect(editor.valid(.redo))
+
+        editor.handleEvent(.key(.ctrl("y")))
+        #expect(editor.text == "abcd")
+        editor.markSaved()
+        #expect(!editor.isModified)
+        #expect(changes == [true, false, true, false])
+
+        editor.load("loaded")
+        #expect(editor.text == "loaded")
+        #expect(!editor.canUndo)
+        #expect(!editor.canRedo)
+        #expect(!editor.isModified)
+    }
+
+    @Test func editorFindsAndReplacesText() {
+        let editor = TEditor(
+            frame: Rect(x: 0, y: 0, width: 30, height: 4),
+            text: "Cat scatter cat\ncat"
+        )
+
+        let first = editor.findNext("cat", options: [.wholeWords])
+        #expect(first == TEditorRange(
+            start: TextPosition(row: 0, column: 0),
+            end: TextPosition(row: 0, column: 3)
+        ))
+
+        let second = editor.findNext("cat", options: [.wholeWords])
+        #expect(second == TEditorRange(
+            start: TextPosition(row: 0, column: 12),
+            end: TextPosition(row: 0, column: 15)
+        ))
+
+        let previous = editor.findNext("cat", options: [.wholeWords, .backwards])
+        #expect(previous == first)
+
+        editor.load("one ONE stone\none")
+        #expect(editor.replaceAll("one", with: "two", options: [.wholeWords]) == 3)
+        #expect(editor.text == "two two stone\ntwo")
+        #expect(editor.undo())
+        #expect(editor.text == "one ONE stone\none")
+
+        editor.load("aaa")
+        #expect(editor.replaceAll("aa", with: "b") == 1)
+        #expect(editor.text == "ba")
+    }
+
+    @Test func editorCommandsRequestFindAndReplace() {
+        let editor = TEditor(frame: Rect(x: 0, y: 0, width: 20, height: 4))
+        var findRequests = 0
+        var replaceRequests = 0
+        editor.onFindRequested = { findRequests += 1 }
+        editor.onReplaceRequested = { replaceRequests += 1 }
+        RetroTextUtils.focus(view: editor)
+
+        #expect(editor.handleCommand(.find))
+        editor.handleEvent(.key(.ctrl("f")))
+        #expect(editor.handleCommand(.replace))
+        editor.handleEvent(.key(.ctrl("r")))
+
+        #expect(findRequests == 2)
+        #expect(replaceRequests == 2)
+    }
+
+    @Test func editWindowUsesEditor() {
+        let window = TEditWindow(
+            frame: Rect(x: 0, y: 0, width: 40, height: 12),
+            title: "Editor",
+            text: "initial"
+        )
+
+        #expect(window.memo === window.editor)
+        #expect(window.editor.text == "initial")
+        #expect(window.editor.verticalScrollBar === window.verticalScrollBar)
+        #expect(window.editor.horizontalScrollBar === window.horizontalScrollBar)
+    }
 }
 
 @MainActor

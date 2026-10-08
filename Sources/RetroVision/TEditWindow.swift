@@ -2,13 +2,14 @@ import SwiftyTermUI
 
 @MainActor
 public final class TEditWindow: TWindow {
-    public let memo: TMemo
+    public let editor: TEditor
+    public var memo: TMemo { editor }
     
     public init(frame: Rect, title: String, text: String = "") {
-        self.memo = TMemo(frame: Rect(x: 1, y: 1, width: max(0, frame.width - 2), height: max(0, frame.height - 2)), text: text)
+        self.editor = TEditor(frame: Rect(x: 1, y: 1, width: max(0, frame.width - 2), height: max(0, frame.height - 2)), text: text)
         super.init(frame: frame, title: title, style: .window)
         showScrollBars()
-        addSubview(memo)
+        addSubview(editor)
         linkScrollBars()
     }
     
