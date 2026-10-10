@@ -4,6 +4,33 @@ import SwiftyTermUI
 open class TMemo: TView {
     public override var canFocus: Bool { true }
     public override var consumesEnterKey: Bool { true }
+    private var readOnly = false
+    private var overwriteMode = false
+    private var autoIndentEnabled = false
+    open var isReadOnly: Bool {
+        get { readOnly }
+        set {
+            guard newValue != readOnly else { return }
+            readOnly = newValue
+            editorModeDidChange()
+        }
+    }
+    open var isOverwriteMode: Bool {
+        get { overwriteMode }
+        set {
+            guard newValue != overwriteMode else { return }
+            overwriteMode = newValue
+            editorModeDidChange()
+        }
+    }
+    open var isAutoIndentEnabled: Bool {
+        get { autoIndentEnabled }
+        set {
+            guard newValue != autoIndentEnabled else { return }
+            autoIndentEnabled = newValue
+            editorModeDidChange()
+        }
+    }
     public var lines: [String] {
         didSet {
             if lines.isEmpty { lines = [""] }
@@ -51,6 +78,8 @@ open class TMemo: TView {
         }
         clampCursor()
     }
+
+    open func editorModeDidChange() {}
     
     @MainActor
     public override func preferredContextMenuPosition() -> Point {
@@ -184,11 +213,7 @@ open class TMemo: TView {
             return true
         }
         
-        // Handle selection complete
         if event.action == .up {
-            if hasSelection {
-                copySelection()
-            }
             return true
         }
         
@@ -226,14 +251,17 @@ open class TMemo: TView {
     private func handleKey(_ key: Key) -> Bool {
         switch key {
         case .character(let ch):
+            guard !isReadOnly else { return true }
             if hasSelection { deleteSelection() }
             insertChar(ch)
             return true
         case .enter:
+            guard !isReadOnly else { return true }
             if hasSelection { deleteSelection() }
             insertNewline()
             return true
         case .backspace:
+            guard !isReadOnly else { return true }
             if hasSelection {
                 deleteSelection()
             } else {
@@ -241,6 +269,7 @@ open class TMemo: TView {
             }
             return true
         case .delete:
+            guard !isReadOnly else { return true }
             if hasSelection {
                 deleteSelection()
             } else {
@@ -266,22 +295,60 @@ open class TMemo: TView {
         case .shiftLeft:
             startSelection()
             moveLeft()
-            copySelection()
             return true
         case .shiftRight:
             startSelection()
             moveRight()
-            copySelection()
             return true
         case .shiftUp:
             startSelection()
             moveUp()
-            copySelection()
             return true
         case .shiftDown:
             startSelection()
             moveDown()
-            copySelection()
+            return true
+        case .shiftHome:
+            startSelection()
+            cursorColumn = 0
+            clampCursor()
+            return true
+        case .shiftEnd:
+            startSelection()
+            cursorColumn = currentLine().count
+            clampCursor()
+            return true
+        case .ctrlLeft:
+            clearSelection()
+            moveWordLeft()
+            return true
+        case .ctrlRight:
+            clearSelection()
+            moveWordRight()
+            return true
+        case .ctrlHome:
+            clearSelection()
+            moveToDocumentStart()
+            return true
+        case .ctrlEnd:
+            clearSelection()
+            moveToDocumentEnd()
+            return true
+        case .ctrlShiftLeft:
+            startSelection()
+            moveWordLeft()
+            return true
+        case .ctrlShiftRight:
+            startSelection()
+            moveWordRight()
+            return true
+        case .ctrlShiftHome:
+            startSelection()
+            moveToDocumentStart()
+            return true
+        case .ctrlShiftEnd:
+            startSelection()
+            moveToDocumentEnd()
             return true
         case .ctrl("c"), .ctrlInsert:
             copySelection()
@@ -293,12 +360,12 @@ open class TMemo: TView {
             pasteFromClipboard()
             return true
         case .home:
-            if !hasSelection { clearSelection() }
+            clearSelection()
             cursorColumn = 0
             clampCursor()
             return true
         case .end:
-            if !hasSelection { clearSelection() }
+            clearSelection()
             cursorColumn = currentLine().count
             clampCursor()
             return true
@@ -326,7 +393,12 @@ open class TMemo: TView {
         let row = max(0, min(lines.count - 1, cursorRow))
         var line = lines[row]
         let index = line.index(line.startIndex, offsetBy: min(cursorColumn, line.count))
-        line.insert(ch, at: index)
+        if isOverwriteMode, cursorColumn < line.count {
+            let next = line.index(after: index)
+            line.replaceSubrange(index..<next, with: String(ch))
+        } else {
+            line.insert(ch, at: index)
+        }
         lines[row] = line
         cursorColumn += 1
         clampCursor()
@@ -338,12 +410,12 @@ open class TMemo: TView {
         let splitIndex = line.index(line.startIndex, offsetBy: min(cursorColumn, line.count))
         let left = String(line[..<splitIndex])
         let right = String(line[splitIndex...])
-        // Batch mutations to avoid intermediate didSet → clampCursor
+        let indentation = isAutoIndentEnabled ? String(left.prefix { $0 == " " || $0 == "\t" }) : ""
         var newLines = lines
         newLines[row] = left
-        newLines.insert(right, at: row + 1)
+        newLines.insert(indentation + right, at: row + 1)
         cursorRow = row + 1
-        cursorColumn = 0
+        cursorColumn = indentation.count
         lines = newLines
     }
     
@@ -420,6 +492,70 @@ open class TMemo: TView {
         cursorColumn = min(cursorColumn, currentLine().count)
         clampCursor()
     }
+
+    private func moveWordLeft() {
+        let characters = Array(text)
+        var position = textOffset()
+        guard position > 0 else { return }
+        position -= 1
+        while position > 0, !isWordCharacter(characters[position]) {
+            position -= 1
+        }
+        while position > 0, isWordCharacter(characters[position - 1]) {
+            position -= 1
+        }
+        move(toTextOffset: position)
+    }
+
+    private func moveWordRight() {
+        let characters = Array(text)
+        var position = textOffset()
+        while position < characters.count, isWordCharacter(characters[position]) {
+            position += 1
+        }
+        while position < characters.count, !isWordCharacter(characters[position]) {
+            position += 1
+        }
+        move(toTextOffset: position)
+    }
+
+    private func moveToDocumentStart() {
+        cursorRow = 0
+        cursorColumn = 0
+        clampCursor()
+    }
+
+    private func moveToDocumentEnd() {
+        cursorRow = max(0, lines.count - 1)
+        cursorColumn = lines[cursorRow].count
+        clampCursor()
+    }
+
+    private func textOffset() -> Int {
+        var result = cursorColumn
+        for row in 0..<cursorRow {
+            result += lines[row].count + 1
+        }
+        return result
+    }
+
+    private func move(toTextOffset offset: Int) {
+        var remainder = max(0, min(offset, Array(text).count))
+        for row in lines.indices {
+            if remainder <= lines[row].count {
+                cursorRow = row
+                cursorColumn = remainder
+                clampCursor()
+                return
+            }
+            remainder -= lines[row].count + 1
+        }
+        moveToDocumentEnd()
+    }
+
+    private func isWordCharacter(_ character: Character) -> Bool {
+        character == "_" || character.isLetter || character.isNumber
+    }
     
     // MARK: - Selection and Clipboard
     
@@ -471,17 +607,20 @@ open class TMemo: TView {
     
     @MainActor
     open func cutSelection() {
+        guard !isReadOnly else { return }
         copySelection()
         deleteSelection()
     }
     
     @MainActor
     open func pasteFromClipboard() {
+        guard !isReadOnly else { return }
         paste(text: TClipboard.text)
     }
     
     @MainActor
     open func paste(text textToPaste: String) {
+        guard !isReadOnly else { return }
         if hasSelection {
             deleteSelection()
         }
@@ -521,6 +660,7 @@ open class TMemo: TView {
     
     @MainActor
     open func deleteSelection() {
+        guard !isReadOnly else { return }
         guard let (start, end) = selectedRange() else { return }
         
         if start.row == end.row {
@@ -549,6 +689,14 @@ open class TMemo: TView {
         cursorColumn = start.column
         clearSelection()
         clampCursor()
+    }
+
+    open func selectAll() {
+        let endRow = max(0, lines.count - 1)
+        setSelection(
+            from: TextPosition(row: 0, column: 0),
+            to: TextPosition(row: endRow, column: lines[endRow].count)
+        )
     }
 
     public func setSelection(from start: TextPosition, to end: TextPosition) {

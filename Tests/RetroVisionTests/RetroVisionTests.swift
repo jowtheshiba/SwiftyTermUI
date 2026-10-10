@@ -889,9 +889,120 @@ struct RetroVisionTests {
         )
 
         #expect(window.memo === window.editor)
+        #expect(window.editor.statusIndicator === window.indicator)
         #expect(window.editor.text == "initial")
         #expect(window.editor.verticalScrollBar === window.verticalScrollBar)
         #expect(window.editor.horizontalScrollBar === window.horizontalScrollBar)
+    }
+
+    @Test func editorSupportsTurboVisionNavigationAndSelection() {
+        let editor = TEditor(
+            frame: Rect(x: 0, y: 0, width: 20, height: 4),
+            text: "one two\nthree"
+        )
+        RetroTextUtils.focus(view: editor)
+        TClipboard.text = "unchanged"
+        editor.cursorColumn = 7
+
+        editor.handleEvent(.key(.ctrlLeft))
+        #expect(editor.cursorColumn == 4)
+        editor.handleEvent(.key(.ctrlShiftLeft))
+        #expect(editor.selectedRange()?.start == TextPosition(row: 0, column: 0))
+        #expect(editor.selectedRange()?.end == TextPosition(row: 0, column: 4))
+        #expect(TClipboard.text == "unchanged")
+
+        editor.clearSelection()
+        editor.cursorColumn = 3
+        editor.handleEvent(.key(.shiftHome))
+        #expect(editor.selectedRange()?.start == TextPosition(row: 0, column: 0))
+        #expect(editor.selectedRange()?.end == TextPosition(row: 0, column: 3))
+
+        editor.handleEvent(.key(.ctrlEnd))
+        #expect(editor.cursorRow == 1)
+        #expect(editor.cursorColumn == 5)
+        #expect(!editor.hasSelection)
+        editor.handleEvent(.key(.ctrlShiftHome))
+        #expect(editor.selectedRange()?.start == TextPosition(row: 0, column: 0))
+        #expect(editor.selectedRange()?.end == TextPosition(row: 1, column: 5))
+    }
+
+    @Test func editorSupportsOverwriteAutoIndentAndReadOnlyModes() {
+        let editor = TEditor(frame: Rect(x: 0, y: 0, width: 20, height: 4), text: "abc")
+        let indicator = TEditorIndicator(frame: Rect(x: 0, y: 0, width: 30, height: 1), editor: editor)
+        RetroTextUtils.focus(view: editor)
+        editor.cursorColumn = 1
+
+        editor.handleEvent(.key(.insert))
+        editor.handleEvent(.key(.character("X")))
+        #expect(editor.text == "aXc")
+        #expect(indicator.displayText.contains("Modified"))
+        #expect(indicator.displayText.contains("OVR"))
+
+        editor.handleEvent(.key(.insert))
+        editor.isAutoIndentEnabled = true
+        editor.load("  item")
+        editor.cursorColumn = 6
+        editor.handleEvent(.key(.enter))
+        #expect(editor.text == "  item\n  ")
+        #expect(editor.cursorRow == 1)
+        #expect(editor.cursorColumn == 2)
+
+        editor.load("locked")
+        editor.isReadOnly = true
+        editor.cursorColumn = 6
+        editor.handleEvent(.key(.character("!")))
+        editor.handleEvent(.key(.backspace))
+        editor.paste(text: "changed")
+        #expect(editor.text == "locked")
+        #expect(editor.replaceAll("locked", with: "open") == 0)
+        #expect(indicator.displayText.contains("READ"))
+    }
+
+    @Test func editorExposesEditingCommandsAndSearchAgain() {
+        let editor = TEditor(frame: Rect(x: 0, y: 0, width: 24, height: 4), text: "one two one")
+        RetroTextUtils.focus(view: editor)
+
+        #expect(editor.findNext("one") != nil)
+        #expect(editor.handleCommand(.searchAgain))
+        #expect(editor.selectedRange()?.start == TextPosition(row: 0, column: 8))
+        #expect(editor.handleCommand(.selectAll))
+        #expect(editor.valid(.copy))
+        #expect(editor.valid(.cut))
+        #expect(editor.handleCommand(.copy))
+        #expect(TClipboard.text == "one two one")
+
+        let titles = editor.contextMenu?().filter { !$0.isSeparator }.map(\.title) ?? []
+        #expect(titles.contains("Copy"))
+        #expect(titles.contains("Select All"))
+        #expect(titles.contains("Find"))
+        #expect(titles.contains("Search Again"))
+        #expect(titles.contains("Replace"))
+
+        editor.isReadOnly = true
+        #expect(!editor.valid(.cut))
+        #expect(!editor.valid(.paste))
+        #expect(!editor.valid(.replace))
+    }
+
+    @Test func editorDialogsExposeSearchAndReplaceActions() {
+        let find = TFindDialog(query: "Needle", options: [.caseSensitive, .wholeWords])
+        #expect(find.query == "Needle")
+        #expect(find.searchOptions == [.caseSensitive, .wholeWords])
+        #expect(find.valid(.ok))
+        find.queryInput.text = ""
+        #expect(!find.valid(.ok))
+
+        let replace = TReplaceDialog(query: "old", replacement: "new", options: [.backwards])
+        var request: (String, String, TEditorSearchOptions)?
+        replace.onReplaceAll = { query, replacement, options in
+            request = (query, replacement, options)
+        }
+        let allButton = replace.subviews.compactMap { $0 as? TButton }.first { $0.title == "All" }
+        allButton?.action()
+
+        #expect(request?.0 == "old")
+        #expect(request?.1 == "new")
+        #expect(request?.2 == [.backwards])
     }
 }
 

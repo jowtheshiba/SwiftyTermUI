@@ -77,6 +77,26 @@ struct InputExample {
                         keyDescription = "Shift+Left"
                     case .shiftRight:
                         keyDescription = "Shift+Right"
+                    case .shiftHome:
+                        keyDescription = "Shift+Home"
+                    case .shiftEnd:
+                        keyDescription = "Shift+End"
+                    case .ctrlLeft:
+                        keyDescription = "Ctrl+Left"
+                    case .ctrlRight:
+                        keyDescription = "Ctrl+Right"
+                    case .ctrlHome:
+                        keyDescription = "Ctrl+Home"
+                    case .ctrlEnd:
+                        keyDescription = "Ctrl+End"
+                    case .ctrlShiftLeft:
+                        keyDescription = "Ctrl+Shift+Left"
+                    case .ctrlShiftRight:
+                        keyDescription = "Ctrl+Shift+Right"
+                    case .ctrlShiftHome:
+                        keyDescription = "Ctrl+Shift+Home"
+                    case .ctrlShiftEnd:
+                        keyDescription = "Ctrl+Shift+End"
                     case .shiftDelete:
                         keyDescription = "Shift+Delete"
                     case .shiftInsert:

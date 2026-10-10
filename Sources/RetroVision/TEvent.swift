@@ -39,6 +39,13 @@ public enum TEvent {
         public static let redo = Command(rawValue: 17)
         public static let find = Command(rawValue: 18)
         public static let replace = Command(rawValue: 19)
+        public static let searchAgain = Command(rawValue: 20)
+        public static let cut = Command(rawValue: 21)
+        public static let copy = Command(rawValue: 22)
+        public static let paste = Command(rawValue: 23)
+        public static let clear = Command(rawValue: 24)
+        public static let selectAll = Command(rawValue: 25)
+        public static let toggleOverwrite = Command(rawValue: 26)
         public static let ok = submit
     }
 

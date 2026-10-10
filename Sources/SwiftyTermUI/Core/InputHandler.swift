@@ -38,6 +38,16 @@ public enum Key: Equatable {
     case shiftDown
     case shiftLeft
     case shiftRight
+    case shiftHome
+    case shiftEnd
+    case ctrlLeft
+    case ctrlRight
+    case ctrlHome
+    case ctrlEnd
+    case ctrlShiftLeft
+    case ctrlShiftRight
+    case ctrlShiftHome
+    case ctrlShiftEnd
     case shiftDelete
     case shiftInsert
     case ctrlInsert
@@ -306,6 +316,16 @@ public final class InputHandler {
         ("\u{1B}[1;2B", .shiftDown),
         ("\u{1B}[1;2C", .shiftRight),
         ("\u{1B}[1;2D", .shiftLeft),
+        ("\u{1B}[1;2H", .shiftHome),
+        ("\u{1B}[1;2F", .shiftEnd),
+        ("\u{1B}[1;5C", .ctrlRight),
+        ("\u{1B}[1;5D", .ctrlLeft),
+        ("\u{1B}[1;5H", .ctrlHome),
+        ("\u{1B}[1;5F", .ctrlEnd),
+        ("\u{1B}[1;6C", .ctrlShiftRight),
+        ("\u{1B}[1;6D", .ctrlShiftLeft),
+        ("\u{1B}[1;6H", .ctrlShiftHome),
+        ("\u{1B}[1;6F", .ctrlShiftEnd),
         ("\u{1B}[3;2~", .shiftDelete),
         ("\u{1B}[2;2~", .shiftInsert),
         ("\u{1B}[2;5~", .ctrlInsert),

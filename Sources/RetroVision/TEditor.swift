@@ -47,6 +47,8 @@ public final class TEditor: TMemo {
     public private(set) var lastSearchText = ""
     public private(set) var lastSearchOptions: TEditorSearchOptions = []
     public var onModifiedChange: ((Bool) -> Void)?
+    public var onStateChange: ((TEditor) -> Void)?
+    public weak var statusIndicator: TEditorIndicator?
     public var onFindRequested: (() -> Void)?
     public var onReplaceRequested: (() -> Void)?
 
@@ -58,6 +60,9 @@ public final class TEditor: TMemo {
     public override init(frame: Rect, text: String = "") {
         savedText = text
         super.init(frame: frame, text: text)
+        contextMenu = { [weak self] in
+            self?.editorContextMenuItems() ?? []
+        }
     }
 
     public override var text: String {
@@ -69,7 +74,16 @@ public final class TEditor: TMemo {
         }
     }
 
+    public override func editorModeDidChange() {
+        if isReadOnly, isOverwriteMode {
+            isOverwriteMode = false
+            return
+        }
+        notifyStateChange()
+    }
+
     public override func handleEvent(_ event: TEvent) {
+        defer { notifyStateChange() }
         if isFocused, case .key(let key) = event {
             switch key {
             case .ctrl("z"):
@@ -79,10 +93,21 @@ public final class TEditor: TMemo {
                 _ = redo()
                 return
             case .ctrl("f"):
-                onFindRequested?()
+                requestFind()
                 return
             case .ctrl("r"):
-                onReplaceRequested?()
+                requestReplace()
+                return
+            case .ctrl("l"):
+                _ = searchAgain()
+                return
+            case .ctrl("a"):
+                selectAll()
+                return
+            case .insert:
+                if !isReadOnly {
+                    isOverwriteMode.toggle()
+                }
                 return
             default:
                 break
@@ -102,10 +127,36 @@ public final class TEditor: TMemo {
         case .redo:
             return redo()
         case .find:
-            onFindRequested?()
+            requestFind()
             return true
         case .replace:
-            onReplaceRequested?()
+            requestReplace()
+            return true
+        case .searchAgain:
+            return searchAgain() != nil
+        case .cut:
+            guard valid(command) else { return false }
+            cutSelection()
+            return true
+        case .copy:
+            guard valid(command) else { return false }
+            copySelection()
+            return true
+        case .paste:
+            guard valid(command) else { return false }
+            pasteFromClipboard()
+            return true
+        case .clear:
+            guard valid(command) else { return false }
+            deleteSelection()
+            return true
+        case .selectAll:
+            guard valid(command) else { return false }
+            selectAll()
+            return true
+        case .toggleOverwrite:
+            guard valid(command) else { return false }
+            isOverwriteMode.toggle()
             return true
         default:
             return super.handleCommand(command)
@@ -118,25 +169,46 @@ public final class TEditor: TMemo {
             return canUndo
         case .redo:
             return canRedo
+        case .cut, .clear:
+            return hasSelection && !isReadOnly
+        case .copy:
+            return hasSelection
+        case .paste:
+            return !isReadOnly && !TClipboard.text.isEmpty
+        case .selectAll:
+            return !text.isEmpty
+        case .searchAgain:
+            return !lastSearchText.isEmpty
+        case .replace, .toggleOverwrite:
+            return !isReadOnly
         default:
             return super.valid(command)
         }
     }
 
     public override func cutSelection() {
+        guard !isReadOnly else { return }
         recordEdit { super.cutSelection() }
     }
 
     public override func pasteFromClipboard() {
+        guard !isReadOnly else { return }
         recordEdit { super.pasteFromClipboard() }
     }
 
     public override func paste(text: String) {
+        guard !isReadOnly else { return }
         recordEdit { super.paste(text: text) }
     }
 
     public override func deleteSelection() {
+        guard !isReadOnly else { return }
         recordEdit { super.deleteSelection() }
+    }
+
+    public override func selectAll() {
+        super.selectAll()
+        notifyStateChange()
     }
 
     public override func setData(_ data: TViewData) -> Bool {
@@ -156,11 +228,13 @@ public final class TEditor: TMemo {
         undoStack.removeAll()
         redoStack.removeAll()
         reportModifiedState()
+        notifyStateChange()
     }
 
     public func markSaved() {
         savedText = text
         reportModifiedState()
+        notifyStateChange()
     }
 
     @discardableResult
@@ -169,6 +243,7 @@ public final class TEditor: TMemo {
         redoStack.append(snapshot())
         restore(previous)
         reportModifiedState()
+        notifyStateChange()
         return true
     }
 
@@ -179,6 +254,7 @@ public final class TEditor: TMemo {
         restore(next)
         trimUndoStack()
         reportModifiedState()
+        notifyStateChange()
         return true
     }
 
@@ -213,11 +289,19 @@ public final class TEditor: TMemo {
         guard let match else { return nil }
         let result = TEditorRange(start: position(at: match.lowerBound), end: position(at: match.upperBound))
         setSelection(from: result.start, to: result.end)
+        notifyStateChange()
         return result
     }
 
     @discardableResult
+    public func searchAgain(wrap: Bool = true) -> TEditorRange? {
+        guard !lastSearchText.isEmpty else { return nil }
+        return findNext(lastSearchText, options: lastSearchOptions, wrap: wrap)
+    }
+
+    @discardableResult
     public func replaceSelection(with replacement: String) -> Bool {
+        guard !isReadOnly else { return false }
         guard let range = selectedRange() else { return false }
         let lowerBound = offset(of: range.start)
         let upperBound = offset(of: range.end)
@@ -234,8 +318,36 @@ public final class TEditor: TMemo {
         options: TEditorSearchOptions = [],
         wrap: Bool = true
     ) -> Bool {
+        guard !isReadOnly, !query.isEmpty else { return false }
+        lastSearchText = query
+        lastSearchOptions = options
+        if selectionMatches(query, options: options) {
+            return replaceSelection(with: replacement)
+        }
         guard findNext(query, options: options, wrap: wrap) != nil else { return false }
         return replaceSelection(with: replacement)
+    }
+
+    public func showFindDialog(application: TApplication = .shared) {
+        let dialog = TFindDialog(query: lastSearchText, options: lastSearchOptions)
+        application.present(modal: dialog) { [weak self] command in
+            guard command == .ok else { return }
+            _ = self?.findNext(dialog.query, options: dialog.searchOptions)
+        }
+    }
+
+    public func showReplaceDialog(application: TApplication = .shared) {
+        let dialog = TReplaceDialog(query: lastSearchText, options: lastSearchOptions)
+        dialog.onFindNext = { [weak self] query, options in
+            _ = self?.findNext(query, options: options)
+        }
+        dialog.onReplace = { [weak self] query, replacement, options in
+            _ = self?.replaceNext(query, with: replacement, options: options)
+        }
+        dialog.onReplaceAll = { [weak self] query, replacement, options in
+            _ = self?.replaceAll(query, with: replacement, options: options)
+        }
+        application.present(modal: dialog as TWindow)
     }
 
     @discardableResult
@@ -244,7 +356,7 @@ public final class TEditor: TMemo {
         with replacement: String,
         options: TEditorSearchOptions = []
     ) -> Int {
-        guard !query.isEmpty else { return 0 }
+        guard !isReadOnly, !query.isEmpty else { return 0 }
         lastSearchText = query
         lastSearchOptions = options
         let matches = matchingOffsets(
@@ -286,7 +398,77 @@ public final class TEditor: TMemo {
             trimUndoStack()
             redoStack.removeAll()
             reportModifiedState()
+            notifyStateChange()
         }
+    }
+
+    private func requestFind() {
+        if let onFindRequested {
+            onFindRequested()
+        } else {
+            showFindDialog()
+        }
+    }
+
+    private func requestReplace() {
+        if let onReplaceRequested {
+            onReplaceRequested()
+        } else {
+            showReplaceDialog()
+        }
+    }
+
+    private func editorContextMenuItems() -> [TMenuItem] {
+        var items: [TMenuItem] = []
+        if canUndo {
+            items.append(TMenuItem(title: "Undo", action: { [weak self] in _ = self?.undo() }, shortcut: "Ctrl+Z"))
+        }
+        if canRedo {
+            items.append(TMenuItem(title: "Redo", action: { [weak self] in _ = self?.redo() }, shortcut: "Ctrl+Y"))
+        }
+        if !items.isEmpty {
+            items.append(.separator)
+        }
+        if valid(.cut) {
+            items.append(TMenuItem(title: "Cut", action: { [weak self] in self?.cutSelection() }, shortcut: "Ctrl+X"))
+        }
+        if valid(.copy) {
+            items.append(TMenuItem(title: "Copy", action: { [weak self] in self?.copySelection() }, shortcut: "Ctrl+C"))
+        }
+        if valid(.paste) {
+            items.append(TMenuItem(title: "Paste", action: { [weak self] in self?.pasteFromClipboard() }, shortcut: "Ctrl+V"))
+        }
+        if valid(.clear) {
+            items.append(TMenuItem(title: "Clear", action: { [weak self] in self?.deleteSelection() }, shortcut: "Del"))
+        }
+        if valid(.selectAll) {
+            items.append(TMenuItem(title: "Select All", action: { [weak self] in self?.selectAll() }, shortcut: "Ctrl+A"))
+        }
+        if !items.isEmpty, !items[items.count - 1].isSeparator {
+            items.append(.separator)
+        }
+        items.append(TMenuItem(title: "Find", action: { [weak self] in self?.requestFind() }, shortcut: "Ctrl+F"))
+        if valid(.searchAgain) {
+            items.append(TMenuItem(title: "Search Again", action: { [weak self] in _ = self?.searchAgain() }, shortcut: "Ctrl+L"))
+        }
+        if valid(.replace) {
+            items.append(TMenuItem(title: "Replace", action: { [weak self] in self?.requestReplace() }, shortcut: "Ctrl+R"))
+        }
+        return items
+    }
+
+    private func selectionMatches(_ query: String, options: TEditorSearchOptions) -> Bool {
+        guard !query.isEmpty, let selection = selectedRange() else { return false }
+        let selectedOffsets = offset(of: selection.start)..<offset(of: selection.end)
+        return matchingOffsets(
+            query,
+            options: options.subtracting(.backwards)
+        ).contains(selectedOffsets)
+    }
+
+    private func notifyStateChange() {
+        statusIndicator?.draw()
+        onStateChange?(self)
     }
 
     private func snapshot() -> Snapshot {
