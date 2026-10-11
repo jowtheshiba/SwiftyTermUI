@@ -1,21 +1,33 @@
-#if canImport(Darwin)
+#if os(Windows)
+import WinSDK
+#elseif canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
 #endif
 import Foundation
 
+#if !os(Windows)
 /// Set from the SIGWINCH handler and polled by InputHandler.
 /// A plain sig_atomic_t flag is the only async-signal-safe mechanism —
 /// anything allocating (NotificationCenter, queues) is UB inside a handler.
 nonisolated(unsafe) var terminalResizePending: sig_atomic_t = 0
+#endif
 
 /// Terminal state and configuration management
 @MainActor
 public final class TerminalManager {
     public static let shared = TerminalManager()
 
+    #if os(Windows)
+    private var originalInputMode: DWORD = 0
+    private var originalOutputMode: DWORD = 0
+    private var originalInputCodePage: UINT = 0
+    private var originalOutputCodePage: UINT = 0
+    private var lastTerminalSize: (columns: Int, rows: Int)?
+    #else
     private var originalTermios: termios = termios()
+    #endif
     private var isRawMode = false
     private let lock = NSLock()
     private var writeBuffer = ""
@@ -55,6 +67,44 @@ public final class TerminalManager {
             return
         }
 
+        #if os(Windows)
+        let inputHandle = GetStdHandle(STD_INPUT_HANDLE)
+        let outputHandle = GetStdHandle(STD_OUTPUT_HANDLE)
+        guard inputHandle != nil,
+              inputHandle != INVALID_HANDLE_VALUE,
+              outputHandle != nil,
+              outputHandle != INVALID_HANDLE_VALUE,
+              GetConsoleMode(inputHandle, &originalInputMode),
+              GetConsoleMode(outputHandle, &originalOutputMode) else {
+            throw TerminalError.failedToGetTerminalAttributes
+        }
+
+        let outputMode = originalOutputMode | DWORD(ENABLE_PROCESSED_OUTPUT) | DWORD(ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+        guard SetConsoleMode(outputHandle, outputMode) else {
+            throw TerminalError.failedToSetTerminalAttributes
+        }
+
+        var inputMode = originalInputMode
+        inputMode &= ~(
+            DWORD(ENABLE_LINE_INPUT)
+                | DWORD(ENABLE_ECHO_INPUT)
+                | DWORD(ENABLE_PROCESSED_INPUT)
+                | DWORD(ENABLE_MOUSE_INPUT)
+                | DWORD(ENABLE_WINDOW_INPUT)
+                | DWORD(ENABLE_QUICK_EDIT_MODE)
+        )
+        inputMode |= DWORD(ENABLE_EXTENDED_FLAGS) | DWORD(ENABLE_VIRTUAL_TERMINAL_INPUT)
+        guard SetConsoleMode(inputHandle, inputMode) else {
+            _ = SetConsoleMode(outputHandle, originalOutputMode)
+            throw TerminalError.failedToSetTerminalAttributes
+        }
+
+        originalInputCodePage = GetConsoleCP()
+        originalOutputCodePage = GetConsoleOutputCP()
+        _ = SetConsoleCP(UINT(CP_UTF8))
+        _ = SetConsoleOutputCP(UINT(CP_UTF8))
+        lastTerminalSize = getTerminalSize()
+        #else
         // Save original parameters
         guard tcgetattr(STDIN_FILENO, &originalTermios) == 0 else {
             throw TerminalError.failedToGetTerminalAttributes
@@ -81,6 +131,7 @@ public final class TerminalManager {
         signal(SIGWINCH, { _ in
             terminalResizePending = 1
         })
+        #endif
 
         // Enter the alternate buffer BEFORE hiding the cursor etc., so the
         // first frame paints into the alt buffer with no flash of old content.
@@ -175,13 +226,45 @@ public final class TerminalManager {
         // Flush all buffered commands before cleanup
         flushBufferUnlocked()
 
+        #if os(Windows)
+        let inputHandle = GetStdHandle(STD_INPUT_HANDLE)
+        let outputHandle = GetStdHandle(STD_OUTPUT_HANDLE)
+        if inputHandle != nil && inputHandle != INVALID_HANDLE_VALUE {
+            _ = SetConsoleMode(inputHandle, originalInputMode)
+        }
+        if outputHandle != nil && outputHandle != INVALID_HANDLE_VALUE {
+            _ = SetConsoleMode(outputHandle, originalOutputMode)
+        }
+        if originalInputCodePage != 0 {
+            _ = SetConsoleCP(originalInputCodePage)
+        }
+        if originalOutputCodePage != 0 {
+            _ = SetConsoleOutputCP(originalOutputCodePage)
+        }
+        lastTerminalSize = nil
+        #else
         // Restore original termios
         _ = tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermios)
+        #endif
         isRawMode = false
     }
 
     /// Gets current terminal dimensions
     public func getTerminalSize() -> (columns: Int, rows: Int) {
+        #if os(Windows)
+        let outputHandle = GetStdHandle(STD_OUTPUT_HANDLE)
+        var info = CONSOLE_SCREEN_BUFFER_INFO()
+        guard outputHandle != nil,
+              outputHandle != INVALID_HANDLE_VALUE,
+              GetConsoleScreenBufferInfo(outputHandle, &info) else {
+            return (80, 24)
+        }
+
+        return (
+            Int(info.srWindow.Right - info.srWindow.Left + 1),
+            Int(info.srWindow.Bottom - info.srWindow.Top + 1)
+        )
+        #else
         var size = winsize()
 
         #if os(Linux)
@@ -194,6 +277,20 @@ public final class TerminalManager {
         }
 
         return (Int(size.ws_col), Int(size.ws_row))
+        #endif
+    }
+
+    func consumeResizeEvent() -> Bool {
+        #if os(Windows)
+        let size = getTerminalSize()
+        defer { lastTerminalSize = size }
+        guard let previousSize = lastTerminalSize else { return false }
+        return size.columns != previousSize.columns || size.rows != previousSize.rows
+        #else
+        guard terminalResizePending != 0 else { return false }
+        terminalResizePending = 0
+        return true
+        #endif
     }
 
     /// Writes ANSI command directly to terminal
@@ -273,6 +370,9 @@ public final class TerminalManager {
         isMouseTrackingEnabled = false
         writeBuffer.removeAll(keepingCapacity: true)
         outputSink = nil
+        #if os(Windows)
+        lastTerminalSize = nil
+        #endif
     }
     
     // MARK: - Mouse Tracking

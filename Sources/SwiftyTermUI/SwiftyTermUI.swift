@@ -83,7 +83,7 @@ public final class SwiftyTermUI {
     }
 
     /// Leaves the alternate screen buffer, restoring the main screen.
-    /// Prefer `shutdown()`, which additionally restores cursor/termios state.
+    /// Prefer `shutdown()`, which additionally restores cursor and terminal state.
     public func leaveAlternateScreen() {
         lock.lock()
         defer { lock.unlock() }

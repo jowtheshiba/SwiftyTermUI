@@ -1,8 +1,5 @@
 import Foundation
 import SwiftyTermUI
-#if canImport(Glibc)
-import Glibc
-#endif
 
 public class TButton: TView {
     public override var canFocus: Bool { true }
@@ -17,7 +14,7 @@ public class TButton: TView {
     private var isMouseDownInside = false
     
     /// Delay in microseconds before action executes (Turbo Vision style)
-    public var actionDelayMicroseconds: useconds_t = 50_000  // 50ms
+    public var actionDelayMicroseconds: UInt32 = 50_000
     
     public init(frame: Rect, title: String, command: TEvent.Command? = nil, action: @escaping () -> Void = {}) {
         self.title = title
@@ -159,7 +156,7 @@ public class TButton: TView {
     public func press() {
         isPressed = true
         TApplication.shared.redraw()
-        usleep(actionDelayMicroseconds)
+        Thread.sleep(forTimeInterval: Double(actionDelayMicroseconds) / 1_000_000)
         isPressed = false
         trigger()
     }
@@ -202,7 +199,7 @@ public class TButton: TView {
             if shouldTrigger {
                 // Turbo Vision press effect - keep pressed briefly
                 TApplication.shared.redraw()
-                usleep(actionDelayMicroseconds)
+                Thread.sleep(forTimeInterval: Double(actionDelayMicroseconds) / 1_000_000)
                 isPressed = false
                 trigger()
             } else {

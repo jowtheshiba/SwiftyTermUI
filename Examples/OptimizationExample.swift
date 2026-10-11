@@ -118,7 +118,7 @@ func main() {
                     break
                 }
             }
-            usleep(50000) // Sleep 50ms to avoid busy loop
+            Thread.sleep(forTimeInterval: 0.05)
         }
 
     } catch {

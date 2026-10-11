@@ -1,0 +1,17 @@
+name: Windows
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          swift-version: swift-6.2.3-release
+          swift-build: 6.2.3-RELEASE
+      - run: swift build
+      - run: swift test

@@ -1,4 +1,6 @@
-#if canImport(Darwin)
+#if os(Windows)
+import WinSDK
+#elseif canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
@@ -133,10 +135,7 @@ public final class InputHandler {
 
     /// Reads the next input event (non-blocking)
     public func readEvent() -> InputEvent? {
-        // SIGWINCH sets a flag (the only async-signal-safe option); convert
-        // it into an event here on the polling thread
-        if terminalResizePending != 0 {
-            terminalResizePending = 0
+        if TerminalManager.shared.consumeResizeEvent() {
             return .terminalResize
         }
 
@@ -148,17 +147,10 @@ public final class InputHandler {
         lock.lock()
         defer { lock.unlock() }
 
-        // Try to read available bytes from stdin (read up to 4096 bytes to capture full mouse sequences and pastes)
-        var readBuffer = [UInt8](repeating: 0, count: 4096)
-        let bytesRead = read(STDIN_FILENO, &readBuffer, 4096)
-
-        if bytesRead > 0 {
-            // Add all read characters to the buffer
-            for i in 0..<bytesRead {
-                buffer.append(Character(UnicodeScalar(readBuffer[i])))
-            }
+        let readBuffer = readAvailableBytes(maxCount: 4096)
+        for byte in readBuffer {
+            buffer.append(Character(UnicodeScalar(byte)))
         }
-        // Negative bytesRead means EAGAIN/EWOULDBLOCK in non-blocking mode — ignored
         
         // Handle Bracketed Paste Mode
         if !isBracketedPaste && buffer.hasPrefix("\u{1B}[200~") {
@@ -212,10 +204,7 @@ public final class InputHandler {
         // treat it as a standalone ESC key. Use 0ms poll to avoid blocking the main loop
         // (blocking caused freeze when typing and cursor lag).
         if buffer == "\u{1B}" {
-            var fds = [pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)]
-            let result = poll(&fds, 1, 0)
-            
-            if result == 0 {
+            if !hasPendingInput() {
                 // No more data available, assume standalone ESC
                 buffer.removeAll()
                 return .keyPress(.escape)
@@ -247,14 +236,9 @@ public final class InputHandler {
         lock.lock()
         defer { lock.unlock() }
         
-        // Read all available bytes
-        var readBuffer = [UInt8](repeating: 0, count: 256)
-        let bytesRead = read(STDIN_FILENO, &readBuffer, 256)
-        
-        if bytesRead > 0 {
-            for i in 0..<bytesRead {
-                buffer.append(Character(UnicodeScalar(readBuffer[i])))
-            }
+        let readBuffer = readAvailableBytes(maxCount: 256)
+        for byte in readBuffer {
+            buffer.append(Character(UnicodeScalar(byte)))
         }
         
         // Parse all mouse events from buffer
@@ -270,6 +254,41 @@ public final class InputHandler {
     /// Clears the event queue
     public func clearEvents() {
         eventQueue.clear()
+    }
+
+    private func readAvailableBytes(maxCount: Int) -> [UInt8] {
+        #if os(Windows)
+        let inputHandle = GetStdHandle(STD_INPUT_HANDLE)
+        guard inputHandle != nil,
+              inputHandle != INVALID_HANDLE_VALUE,
+              WaitForSingleObject(inputHandle, 0) == WAIT_OBJECT_0 else {
+            return []
+        }
+
+        var bytes = [UInt8](repeating: 0, count: maxCount)
+        var bytesRead: DWORD = 0
+        let succeeded = bytes.withUnsafeMutableBytes { rawBuffer in
+            ReadFile(inputHandle, rawBuffer.baseAddress, DWORD(maxCount), &bytesRead, nil)
+        }
+        guard succeeded, bytesRead > 0 else { return [] }
+        return Array(bytes.prefix(Int(bytesRead)))
+        #else
+        var bytes = [UInt8](repeating: 0, count: maxCount)
+        let bytesRead = read(STDIN_FILENO, &bytes, maxCount)
+        guard bytesRead > 0 else { return [] }
+        return Array(bytes.prefix(bytesRead))
+        #endif
+    }
+
+    private func hasPendingInput() -> Bool {
+        #if os(Windows)
+        let inputHandle = GetStdHandle(STD_INPUT_HANDLE)
+        guard inputHandle != nil, inputHandle != INVALID_HANDLE_VALUE else { return false }
+        return WaitForSingleObject(inputHandle, 0) == WAIT_OBJECT_0
+        #else
+        var fds = [pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)]
+        return poll(&fds, 1, 0) > 0
+        #endif
     }
 
     /// Coalesces consecutive move events - keep only the last position

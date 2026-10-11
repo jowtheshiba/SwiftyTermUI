@@ -36,11 +36,23 @@ public final class LocalFileSystem: FileSystemProvider {
     }
     
     public var pathSeparator: Character {
+        #if os(Windows)
+        return "\\"
+        #else
         return "/"
+        #endif
     }
     
     public var rootDirectories: [String] {
+        #if os(Windows)
+        return (65...90).compactMap { value in
+            guard let scalar = UnicodeScalar(value) else { return nil }
+            let root = "\(Character(scalar)):\\"
+            return fileManager.fileExists(atPath: root) ? root : nil
+        }
+        #else
         return ["/"]
+        #endif
     }
     
     public func listContents(of path: String) throws -> [FileEntry] {
