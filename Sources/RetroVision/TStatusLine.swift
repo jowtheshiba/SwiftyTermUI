@@ -6,12 +6,14 @@ public struct TStatusItem {
     public let title: String
     public let action: (() -> Void)?
     public let command: TEvent.Command?
+    public var isEnabled: Bool
     
-    public init(key: Key, keyText: String, title: String, command: TEvent.Command? = nil, action: (() -> Void)? = nil) {
+    public init(key: Key, keyText: String, title: String, command: TEvent.Command? = nil, isEnabled: Bool = true, action: (() -> Void)? = nil) {
         self.key = key
         self.keyText = keyText
         self.title = title
         self.command = command
+        self.isEnabled = isEnabled
         self.action = action
     }
 }
@@ -52,6 +54,9 @@ public class TStatusLine: TView {
         for item in items {
             let keyText = item.keyText
             let titleText = item.title
+            let enabled = isItemEnabled(item)
+            let itemForeground = enabled ? fg : TTheme.current.statusDisabled
+            let keyForeground = enabled ? TTheme.current.statusKey : TTheme.current.statusDisabled
             if currentX + keyText.count + 1 >= origin.x + frame.width {
                 break
             }
@@ -61,7 +66,7 @@ public class TStatusLine: TView {
                 column: currentX,
                 text: keyText,
                 attributes: [.bold],
-                foregroundColor: TTheme.current.statusKey,
+                foregroundColor: keyForeground,
                 backgroundColor: bg
             )
             currentX += keyText.count
@@ -72,7 +77,7 @@ public class TStatusLine: TView {
                     column: currentX,
                     text: " " + titleText + " ",
                     attributes: [],
-                    foregroundColor: fg,
+                    foregroundColor: itemForeground,
                     backgroundColor: bg
                 )
                 currentX += titleText.count + 2
@@ -86,6 +91,7 @@ public class TStatusLine: TView {
     public override func handleEvent(_ event: TEvent) {
         if case .key(let key) = event {
             for item in items where item.key == key {
+                guard isItemEnabled(item) else { return }
                 item.action?()
                 if let command = item.command {
                     sendCommand(command)
@@ -94,5 +100,12 @@ public class TStatusLine: TView {
             }
         }
         super.handleEvent(event)
+    }
+
+    @MainActor
+    private func isItemEnabled(_ item: TStatusItem) -> Bool {
+        guard item.isEnabled else { return false }
+        guard let command = item.command else { return true }
+        return owningApplication?.isCommandEnabled(command) ?? true
     }
 }

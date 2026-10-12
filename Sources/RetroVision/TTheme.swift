@@ -35,10 +35,12 @@ public struct TTheme: Sendable {
     public var menuBarSelected = TColorPair(fg: .white, bg: .black)
     public var menuItem = TColorPair(fg: .black, bg: .white)
     public var menuItemSelected = TColorPair(fg: .brightWhite, bg: .green)
+    public var menuItemDisabled = TColorPair(fg: .white, bg: .white)
 
     // MARK: - Status line
     public var statusLine = TColorPair(fg: .white, bg: .blue)
     public var statusKey: Color = .brightWhite
+    public var statusDisabled: Color = .black
 
     // MARK: - Controls
     public var button = TColorPair(fg: .black, bg: .green)

@@ -38,9 +38,30 @@ open class TView {
     /// Whether the view uses the Enter key itself (blocks a dialog's default button)
     open var consumesEnterKey: Bool { false }
     public var contextMenu: (() -> [TMenuItem])?
+    public var helpContext: THelpContext = .none
     
     public init(frame: Rect) {
         self.frame = frame
+    }
+
+    @MainActor
+    public var owningApplication: TApplication? {
+        var root: TView = self
+        while let parent = root.superview {
+            root = parent
+        }
+        return (root as? TDesktop)?.application
+    }
+
+    public var resolvedHelpContext: THelpContext {
+        var current: TView? = self
+        while let view = current {
+            if view.helpContext != .none {
+                return view.helpContext
+            }
+            current = view.superview
+        }
+        return .none
     }
     
     open func addSubview(_ view: TView) {
@@ -109,6 +130,11 @@ open class TView {
     @discardableResult
     open func handleCommand(_ command: TEvent.Command) -> Bool {
         return false
+    }
+
+    @MainActor
+    open func commandState(_ command: TEvent.Command) -> Bool? {
+        nil
     }
 
     @MainActor

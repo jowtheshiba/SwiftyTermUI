@@ -35,9 +35,10 @@ public class TPopupMenu: TView {
     }
     
     public func dismiss() {
+        let application = owningApplication
         onDismiss?()
         removeFromSuperview()
-        TApplication.shared.redraw()
+        application?.redraw()
     }
     
     @MainActor
@@ -121,9 +122,10 @@ public class TPopupMenu: TView {
                     backgroundColor: TTheme.current.menuItem.bg
                 )
                 
-                let isSelected = index == selectedIndex
-                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
-                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
+                let enabled = item.isEffectivelyEnabled(sender: self)
+                let isSelected = index == selectedIndex && enabled
+                let itemFg: Color = enabled ? (isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg) : TTheme.current.menuItemDisabled.fg
+                let itemBg: Color = enabled ? (isSelected ? selectedBg : TTheme.current.menuItem.bg) : TTheme.current.menuItemDisabled.bg
                 let itemText = buildItemLine(item, contentWidth: frame.width - 2)
                 
                 tui.drawString(
@@ -168,10 +170,10 @@ public class TPopupMenu: TView {
         if event.action == .move || event.action == .drag {
             let itemIndex = localPoint.y - 1
             if itemIndex >= 0 && itemIndex < items.count {
-                if !items[itemIndex].isSeparator {
+                if isSelectable(items[itemIndex]) {
                     if selectedIndex != itemIndex {
                         selectedIndex = itemIndex
-                        TApplication.shared.redraw()
+                        owningApplication?.redraw()
                     }
                 }
             }
@@ -182,8 +184,7 @@ public class TPopupMenu: TView {
             let itemIndex = localPoint.y - 1
             if itemIndex >= 0 && itemIndex < items.count {
                 let item = items[itemIndex]
-                if !item.isSeparator {
-                    item.perform(sender: self)
+                if isSelectable(item), item.perform(sender: self) {
                     dismiss()
                 }
             }
@@ -208,8 +209,7 @@ public class TPopupMenu: TView {
         case .enter:
             if selectedIndex >= 0 && selectedIndex < items.count {
                 let item = items[selectedIndex]
-                if !item.isSeparator {
-                    item.perform(sender: self)
+                if isSelectable(item), item.perform(sender: self) {
                     dismiss()
                 }
             }
@@ -221,7 +221,7 @@ public class TPopupMenu: TView {
     
     private func firstSelectableIndex() -> Int {
         for (index, item) in items.enumerated() {
-            if !item.isSeparator {
+            if isSelectable(item) {
                 return index
             }
         }
@@ -233,7 +233,7 @@ public class TPopupMenu: TView {
         var idx = index
         for _ in 0..<items.count {
             idx = (idx + direction + items.count) % items.count
-            if !items[idx].isSeparator {
+            if isSelectable(items[idx]) {
                 return idx
             }
         }
@@ -247,11 +247,19 @@ public class TPopupMenu: TView {
         let shortcut = item.shortcut ?? ""
         let shortcutWidth = shortcut.count
         let rightReserved = shortcutWidth > 0 ? shortcutWidth + 1 : 0
-        let titleAvailable = max(0, contentWidth - rightReserved - 1)
+        let titleAvailable = max(0, contentWidth - rightReserved - 2)
         let titleText = String(item.title.prefix(titleAvailable))
+
+        if contentWidth > 0 {
+            if item.markStyle == .radio {
+                chars[0] = item.isChecked ? "●" : "○"
+            } else if item.isChecked {
+                chars[0] = "√"
+            }
+        }
         
         for (i, ch) in titleText.enumerated() {
-            let idx = 1 + i
+            let idx = 2 + i
             if idx >= 0 && idx < contentWidth {
                 chars[idx] = ch
             }
@@ -268,5 +276,9 @@ public class TPopupMenu: TView {
         }
         
         return String(chars)
+    }
+
+    private func isSelectable(_ item: TMenuItem) -> Bool {
+        !item.isSeparator && item.isEffectivelyEnabled(sender: self)
     }
 }

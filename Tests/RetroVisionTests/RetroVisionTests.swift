@@ -1004,6 +1004,122 @@ struct RetroVisionTests {
         #expect(request?.1 == "new")
         #expect(request?.2 == [.backwards])
     }
+
+    @Test func menuAndStatusItemsRespectCommandState() {
+        let app = TApplication()
+        let command = TEvent.Command(rawValue: 8_001)
+        var menuActions = 0
+        var statusActions = 0
+        let menuBar = TMenuBar(
+            frame: Rect(x: 0, y: 0, width: 80, height: 1),
+            menus: [TMenu(title: "Test", items: [
+                TMenuItem(title: "Action", action: { menuActions += 1 }, command: command, shortcutKey: .ctrl("m"))
+            ])]
+        )
+        menuBar.application = app
+        let statusLine = TStatusLine(
+            frame: Rect(x: 0, y: 23, width: 80, height: 1),
+            items: [TStatusItem(key: .f2, keyText: "F2", title: "Action", command: command, action: { statusActions += 1 })]
+        )
+        app.desktop.addSubview(statusLine)
+
+        app.disableCommand(command)
+        #expect(menuBar.handleShortcut(.ctrl("m")))
+        statusLine.handleEvent(.key(.f2))
+        #expect(menuActions == 0)
+        #expect(statusActions == 0)
+
+        app.enableCommand(command)
+        #expect(menuBar.handleShortcut(.ctrl("m")))
+        statusLine.handleEvent(.key(.f2))
+        #expect(menuActions == 1)
+        #expect(statusActions == 1)
+    }
+
+    @Test func focusedEditorProvidesDynamicCommandState() {
+        let app = TApplication()
+        let window = TWindow(frame: Rect(x: 0, y: 0, width: 40, height: 12), title: "Editor")
+        let editor = TEditor(frame: Rect(x: 1, y: 1, width: 30, height: 6), text: "Text")
+        window.addSubview(editor)
+        app.desktop.addSubview(window)
+        RetroTextUtils.focus(view: editor)
+
+        #expect(!app.isCommandEnabled(.copy))
+        #expect(!app.isCommandEnabled(.undo))
+        editor.selectAll()
+        #expect(app.isCommandEnabled(.copy))
+        #expect(app.isCommandEnabled(.cut))
+        editor.isReadOnly = true
+        #expect(app.isCommandEnabled(.copy))
+        #expect(!app.isCommandEnabled(.cut))
+        #expect(!app.isCommandEnabled(.replace))
+    }
+
+    @Test func explicitMenuStateAndMarksAreConfigurable() {
+        var fired = false
+        let view = TView(frame: Rect(x: 0, y: 0, width: 1, height: 1))
+        let disabled = TMenuItem(title: "Disabled", action: { fired = true }, isEnabled: false)
+        let checked = TMenuItem(title: "Checked", isChecked: true)
+        let radio = TMenuItem(title: "Radio", isChecked: true, markStyle: .radio)
+
+        #expect(!disabled.perform(sender: view))
+        #expect(!fired)
+        #expect(checked.isChecked)
+        #expect(checked.markStyle == .check)
+        #expect(radio.markStyle == .radio)
+    }
+
+    @Test func helpContextInheritsAndTopicsCanBeReplaced() {
+        let window = TWindow(frame: Rect(x: 0, y: 0, width: 40, height: 12), title: "Window")
+        let input = TInputLine(frame: Rect(x: 1, y: 1, width: 20, height: 1))
+        window.helpContext = 100
+        window.addSubview(input)
+        #expect(input.resolvedHelpContext == 100)
+
+        input.helpContext = 101
+        #expect(input.resolvedHelpContext == 101)
+
+        let help = THelpSystem()
+        help.register(THelpTopic(context: 100, title: "First", text: "Original"))
+        help.register(THelpTopic(context: 100, title: "First", text: "Updated"))
+        #expect(help.topic(for: 100)?.text == "Updated")
+    }
+
+    @Test func helpViewerNavigatesLinksBackAndForward() {
+        let first: THelpContext = 200
+        let second: THelpContext = 201
+        let help = THelpSystem(topics: [
+            THelpTopic(context: first, title: "First", text: "First topic", links: [THelpLink(title: "Second", context: second)]),
+            THelpTopic(context: second, title: "Second", text: "Second topic")
+        ])
+        let viewer = THelpViewer(frame: Rect(x: 0, y: 0, width: 60, height: 18), helpSystem: help, context: first)
+
+        viewer.followLink(at: 0)
+        #expect(viewer.currentContext == second)
+        #expect(viewer.canGoBack)
+        viewer.goBack()
+        #expect(viewer.currentContext == first)
+        #expect(viewer.canGoForward)
+        viewer.goForward()
+        #expect(viewer.currentContext == second)
+    }
+
+    @Test func applicationOpensHelpForFocusedContext() {
+        let context: THelpContext = 300
+        let help = THelpSystem(topics: [THelpTopic(context: context, title: "Input", text: "Input help")])
+        let app = TApplication(helpSystem: help)
+        let window = TWindow(frame: Rect(x: 0, y: 0, width: 40, height: 12), title: "Window")
+        let input = TInputLine(frame: Rect(x: 1, y: 1, width: 20, height: 1))
+        window.helpContext = context
+        window.addSubview(input)
+        app.desktop.addSubview(window)
+        RetroTextUtils.focus(view: input)
+
+        #expect(app.showHelp())
+        let viewer = app.desktop.activeModal as? THelpViewer
+        #expect(viewer?.currentContext == context)
+        viewer?.close()
+    }
 }
 
 @MainActor

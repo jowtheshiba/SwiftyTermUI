@@ -5,6 +5,7 @@ import SwiftyTermUI
 @MainActor
 open class TApplication {
     public static let shared = TApplication()
+    public let helpSystem: THelpSystem
     private var disabledCommands: Set<TEvent.Command> = []
     
 
@@ -17,7 +18,9 @@ open class TApplication {
     private var lastMouseClickTime: Date?
     private let doubleClickInterval: TimeInterval = 0.5
     
-    public init() {}
+    public init(helpSystem: THelpSystem = THelpSystem()) {
+        self.helpSystem = helpSystem
+    }
     
     private lazy var _desktop: TDesktop = {
         let (cols, rows) = SwiftyTermUI.shared.getTerminalSize()
@@ -119,6 +122,11 @@ open class TApplication {
             }
             
         case .keyPress(let key):
+            if key == .f1, showHelp() {
+                needsFullRedraw = true
+                return
+            }
+
             if key == .ctrl("c") {
                 postCommand(.quit)
                 return
@@ -355,7 +363,37 @@ open class TApplication {
     }
 
     public func isCommandEnabled(_ command: TEvent.Command) -> Bool {
-        !disabledCommands.contains(command)
+        guard !disabledCommands.contains(command) else { return false }
+        var current = desktop.findFocusedView()
+        while let view = current {
+            if let enabled = view.commandState(command) {
+                return enabled
+            }
+            current = view.superview
+        }
+        return true
+    }
+
+    @discardableResult
+    open func showHelp() -> Bool {
+        guard let focused = desktop.findFocusedView() else { return false }
+        return showHelp(context: focused.resolvedHelpContext)
+    }
+
+    @discardableResult
+    open func showHelp(context: THelpContext) -> Bool {
+        guard context != .none, helpSystem.topic(for: context) != nil else { return false }
+        let width = max(1, min(72, desktop.frame.width - 4))
+        let height = max(1, min(22, desktop.frame.height - 4))
+        let frame = Rect(
+            x: max(0, (desktop.frame.width - width) / 2),
+            y: max(0, (desktop.frame.height - height) / 2),
+            width: width,
+            height: height
+        )
+        let viewer = THelpViewer(frame: frame, helpSystem: helpSystem, context: context)
+        present(modal: viewer)
+        return true
     }
 
     public func broadcast(_ name: TEvent.Broadcast.Name, source: TView? = nil, payload: Any? = nil) {

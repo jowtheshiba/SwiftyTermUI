@@ -69,17 +69,56 @@ open class TMemo: TView {
         contextMenu = { [weak self] in
             guard let self else { return [] }
             return [
-                TMenuItem(title: "Cut", action: { self.cutSelection() }),
-                TMenuItem(title: "Copy", action: { self.copySelection() }),
-                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }),
+                TMenuItem(title: "Cut", action: { self.cutSelection() }, isEnabled: self.hasSelection && !self.isReadOnly),
+                TMenuItem(title: "Copy", action: { self.copySelection() }, isEnabled: self.hasSelection),
+                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }, isEnabled: !self.isReadOnly && !TClipboard.text.isEmpty),
                 TMenuItem.separator,
-                TMenuItem(title: "Clear", action: { self.deleteSelection() })
+                TMenuItem(title: "Clear", action: { self.deleteSelection() }, isEnabled: self.hasSelection && !self.isReadOnly)
             ]
         }
         clampCursor()
     }
 
     open func editorModeDidChange() {}
+
+    @discardableResult
+    open override func handleCommand(_ command: TEvent.Command) -> Bool {
+        guard commandState(command) == true else { return super.handleCommand(command) }
+        switch command {
+        case .cut:
+            cutSelection()
+        case .copy:
+            copySelection()
+        case .paste:
+            pasteFromClipboard()
+        case .clear:
+            deleteSelection()
+        case .selectAll:
+            selectAll()
+        case .toggleOverwrite:
+            isOverwriteMode.toggle()
+        default:
+            return super.handleCommand(command)
+        }
+        return true
+    }
+
+    open override func commandState(_ command: TEvent.Command) -> Bool? {
+        switch command {
+        case .cut, .clear:
+            return hasSelection && !isReadOnly
+        case .copy:
+            return hasSelection
+        case .paste:
+            return !isReadOnly && !TClipboard.text.isEmpty
+        case .selectAll:
+            return !text.isEmpty
+        case .toggleOverwrite:
+            return !isReadOnly
+        default:
+            return super.commandState(command)
+        }
+    }
     
     @MainActor
     public override func preferredContextMenuPosition() -> Point {

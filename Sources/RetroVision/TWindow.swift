@@ -97,6 +97,17 @@ public class TWindow: TGroup {
         }
     }
 
+    public override func commandState(_ command: TEvent.Command) -> Bool? {
+        switch command {
+        case .close:
+            return allowClosing
+        case .zoom, .resize:
+            return allowResizing
+        default:
+            return super.commandState(command)
+        }
+    }
+
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         // Tab/Shift+Tab cycle focus between focusable child views.

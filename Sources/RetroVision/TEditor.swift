@@ -186,6 +186,17 @@ public final class TEditor: TMemo {
         }
     }
 
+    public override func commandState(_ command: TEvent.Command) -> Bool? {
+        switch command {
+        case .undo, .redo, .cut, .copy, .paste, .clear, .selectAll, .searchAgain, .replace, .toggleOverwrite:
+            return valid(command)
+        case .find:
+            return true
+        default:
+            return super.commandState(command)
+        }
+    }
+
     public override func cutSelection() {
         guard !isReadOnly else { return }
         recordEdit { super.cutSelection() }

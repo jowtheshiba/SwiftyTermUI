@@ -1,6 +1,11 @@
 import SwiftyTermUI
 
 public struct TMenuItem {
+    public enum MarkStyle: Sendable {
+        case check
+        case radio
+    }
+
     public var title: String
     public var action: (() -> Void)?
     public var command: TEvent.Command?
@@ -10,8 +15,11 @@ public struct TMenuItem {
     public var shortcutKey: Key?
     public var submenu: [TMenuItem]?
     public var isSeparator: Bool
+    public var isEnabled: Bool
+    public var isChecked: Bool
+    public var markStyle: MarkStyle
 
-    public init(title: String, action: (() -> Void)? = nil, command: TEvent.Command? = nil, shortcut: String? = nil, shortcutKey: Key? = nil) {
+    public init(title: String, action: (() -> Void)? = nil, command: TEvent.Command? = nil, shortcut: String? = nil, shortcutKey: Key? = nil, isEnabled: Bool = true, isChecked: Bool = false, markStyle: MarkStyle = .check) {
         self.title = title
         self.action = action
         self.command = command
@@ -19,9 +27,12 @@ public struct TMenuItem {
         self.shortcutKey = shortcutKey
         self.submenu = nil
         self.isSeparator = false
+        self.isEnabled = isEnabled
+        self.isChecked = isChecked
+        self.markStyle = markStyle
     }
 
-    public init(title: String, shortcut: String? = nil, submenu: [TMenuItem]) {
+    public init(title: String, shortcut: String? = nil, submenu: [TMenuItem], isEnabled: Bool = true) {
         self.title = title
         self.action = nil
         self.command = nil
@@ -29,6 +40,9 @@ public struct TMenuItem {
         self.shortcutKey = nil
         self.submenu = submenu
         self.isSeparator = false
+        self.isEnabled = isEnabled
+        self.isChecked = false
+        self.markStyle = .check
     }
     
     public static var separator: TMenuItem {
@@ -38,7 +52,16 @@ public struct TMenuItem {
     }
 
     @MainActor
-    func perform(sender: TView, application: TApplication? = nil) {
+    func isEffectivelyEnabled(sender: TView, application: TApplication? = nil) -> Bool {
+        guard isEnabled else { return false }
+        guard let command else { return true }
+        return (application ?? sender.owningApplication)?.isCommandEnabled(command) ?? true
+    }
+
+    @MainActor
+    @discardableResult
+    func perform(sender: TView, application: TApplication? = nil) -> Bool {
+        guard isEffectivelyEnabled(sender: sender, application: application) else { return false }
         action?()
         if let command {
             if let application {
@@ -47,6 +70,7 @@ public struct TMenuItem {
                 sender.sendCommand(command)
             }
         }
+        return true
     }
 }
 
@@ -227,9 +251,10 @@ public class TMenuBar: TView {
                     backgroundColor: TTheme.current.menuItem.bg
                 )
                 
-                let isSelected = index == selectedItemIndex
-                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
-                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
+                let enabled = item.isEffectivelyEnabled(sender: self, application: application)
+                let isSelected = index == selectedItemIndex && enabled
+                let itemFg: Color = enabled ? (isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg) : TTheme.current.menuItemDisabled.fg
+                let itemBg: Color = enabled ? (isSelected ? selectedBg : TTheme.current.menuItem.bg) : TTheme.current.menuItemDisabled.bg
                 
                 let itemText = buildItemLine(item, contentWidth: dropdownLayout.width - 2)
                 
@@ -341,7 +366,7 @@ public class TMenuBar: TView {
                     let menu = menus[selectedMenuIndex]
                     if itemIndex >= 0 && itemIndex < menu.items.count {
                         let item = menu.items[itemIndex]
-                        if item.isSeparator {
+                        if !isSelectable(item) {
                             isSubmenuOpen = false
                         } else {
                             if selectedItemIndex != itemIndex {
@@ -369,7 +394,7 @@ public class TMenuBar: TView {
                     let itemIndex = event.position.y - submenuLayout.y - 1
                     if itemIndex >= 0 && itemIndex < submenuItems.count {
                         let item = submenuItems[itemIndex]
-                        if !item.isSeparator {
+                        if isSelectable(item) {
                             selectedSubmenuItemIndex = itemIndex
                         }
                         return true
@@ -395,8 +420,7 @@ public class TMenuBar: TView {
                     let itemIndex = event.position.y - submenuLayout.y - 1
                     if itemIndex >= 0 && itemIndex < submenuItems.count {
                         let item = submenuItems[itemIndex]
-                        if !item.isSeparator {
-                            item.perform(sender: self, application: application)
+                        if isSelectable(item), item.perform(sender: self, application: application) {
                             isSubmenuOpen = false
                             isMenuOpen = false
                         }
@@ -415,14 +439,15 @@ public class TMenuBar: TView {
                     let menu = menus[selectedMenuIndex]
                     if itemIndex >= 0 && itemIndex < menu.items.count {
                         let item = menu.items[itemIndex]
-                        if !item.isSeparator {
+                        if isSelectable(item) {
                             selectedItemIndex = itemIndex
                             if let submenu = item.submenu, !submenu.isEmpty {
                                 openSubmenuIfAvailable()
                             } else {
-                                item.perform(sender: self, application: application)
-                                isSubmenuOpen = false
-                                isMenuOpen = false
+                                if item.perform(sender: self, application: application) {
+                                    isSubmenuOpen = false
+                                    isMenuOpen = false
+                                }
                             }
                         }
                     }
@@ -482,7 +507,7 @@ public class TMenuBar: TView {
     private func fireShortcut(_ key: Key, in items: [TMenuItem]) -> Bool {
         for item in items where !item.isSeparator {
             if let bound = item.shortcutKey, bound == key, item.action != nil || item.command != nil {
-                item.perform(sender: self, application: application)
+                _ = item.perform(sender: self, application: application)
                 return true
             }
             if let submenu = item.submenu, fireShortcut(key, in: submenu) {
@@ -577,8 +602,7 @@ public class TMenuBar: TView {
         case .enter:
             if isSubmenuOpen, let submenuItems = currentSubmenuItems() {
                 let item = submenuItems[selectedSubmenuItemIndex]
-                if !item.isSeparator {
-                    item.perform(sender: self, application: application)
+                if isSelectable(item), item.perform(sender: self, application: application) {
                     isSubmenuOpen = false
                     isMenuOpen = false
                 }
@@ -588,10 +612,11 @@ public class TMenuBar: TView {
                     selectedItemIndex = firstSelectableIndex(in: menu.items)
                 }
                 let item = menu.items[selectedItemIndex]
-                if !item.isSeparator {
+                if isSelectable(item) {
                     if !openSubmenuIfAvailable() {
-                        item.perform(sender: self, application: application)
-                        isMenuOpen = false
+                        if item.perform(sender: self, application: application) {
+                            isMenuOpen = false
+                        }
                     }
                 }
             }
@@ -617,11 +642,19 @@ public class TMenuBar: TView {
         let shortcut = item.shortcut ?? ""
         let shortcutWidth = shortcut.count
         let rightReserved = indicatorWidth + (shortcutWidth > 0 ? shortcutWidth + 1 : 0)
-        let titleAvailable = max(0, contentWidth - rightReserved - 1)
+        let titleAvailable = max(0, contentWidth - rightReserved - 2)
         let titleText = String(item.title.prefix(titleAvailable))
+
+        if contentWidth > 0 {
+            if item.markStyle == .radio {
+                chars[0] = item.isChecked ? "●" : "○"
+            } else if item.isChecked {
+                chars[0] = "√"
+            }
+        }
         
         for (i, ch) in titleText.enumerated() {
-            let idx = 1 + i
+            let idx = 2 + i
             if idx >= 0 && idx < contentWidth {
                 chars[idx] = ch
             }
@@ -751,9 +784,10 @@ public class TMenuBar: TView {
                     backgroundColor: TTheme.current.menuItem.bg
                 )
                 
-                let isSelected = index == selectedIndex
-                let itemFg: Color = isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg
-                let itemBg: Color = isSelected ? selectedBg : TTheme.current.menuItem.bg
+                let enabled = item.isEffectivelyEnabled(sender: self, application: application)
+                let isSelected = index == selectedIndex && enabled
+                let itemFg: Color = enabled ? (isSelected ? TTheme.current.menuItemSelected.fg : TTheme.current.menuItem.fg) : TTheme.current.menuItemDisabled.fg
+                let itemBg: Color = enabled ? (isSelected ? selectedBg : TTheme.current.menuItem.bg) : TTheme.current.menuItemDisabled.bg
                 let itemText = buildItemLine(item, contentWidth: layout.width - 2)
                 
                 tui.drawString(
@@ -794,7 +828,9 @@ public class TMenuBar: TView {
         if selectedItemIndex < 0 {
             return false
         }
-        guard let submenuItems = currentSubmenuItems(), !submenuItems.isEmpty else {
+        let menu = menus[selectedMenuIndex]
+        guard selectedItemIndex < menu.items.count, isSelectable(menu.items[selectedItemIndex]),
+              let submenuItems = currentSubmenuItems(), !submenuItems.isEmpty else {
             isSubmenuOpen = false
             return false
         }
@@ -806,7 +842,7 @@ public class TMenuBar: TView {
     @MainActor
     private func firstSelectableIndex(in items: [TMenuItem]) -> Int {
         for (index, item) in items.enumerated() {
-            if !item.isSeparator {
+            if isSelectable(item) {
                 return index
             }
         }
@@ -819,10 +855,15 @@ public class TMenuBar: TView {
         var idx = index
         for _ in 0..<items.count {
             idx = (idx + direction + items.count) % items.count
-            if !items[idx].isSeparator {
+            if isSelectable(items[idx]) {
                 return idx
             }
         }
         return index
+    }
+
+    @MainActor
+    private func isSelectable(_ item: TMenuItem) -> Bool {
+        !item.isSeparator && item.isEffectivelyEnabled(sender: self, application: application)
     }
 }

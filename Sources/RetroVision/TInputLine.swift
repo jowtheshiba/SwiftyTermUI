@@ -44,11 +44,11 @@ public class TInputLine: TView {
         contextMenu = { [weak self] in
             guard let self else { return [] }
             return [
-                TMenuItem(title: "Cut", action: { self.cutSelection() }),
-                TMenuItem(title: "Copy", action: { self.copySelection() }),
-                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }),
+                TMenuItem(title: "Cut", action: { self.cutSelection() }, isEnabled: self.hasSelection),
+                TMenuItem(title: "Copy", action: { self.copySelection() }, isEnabled: self.hasSelection && !self.isPassword),
+                TMenuItem(title: "Paste", action: { self.pasteFromClipboard() }, isEnabled: !TClipboard.text.isEmpty && (self.maxLength.map { self.text.count < $0 } ?? true)),
                 TMenuItem.separator,
-                TMenuItem(title: "Clear", action: { self.deleteSelection() })
+                TMenuItem(title: "Clear", action: { self.deleteSelection() }, isEnabled: self.hasSelection)
             ]
         }
         clampCursor()
@@ -150,6 +150,41 @@ public class TInputLine: TView {
             return true
         }
         return validator?.isValid(text) ?? true
+    }
+
+    @discardableResult
+    public override func handleCommand(_ command: TEvent.Command) -> Bool {
+        guard commandState(command) == true else { return super.handleCommand(command) }
+        switch command {
+        case .cut:
+            cutSelection()
+        case .copy:
+            copySelection()
+        case .paste:
+            pasteFromClipboard()
+        case .clear:
+            deleteSelection()
+        case .selectAll:
+            selectAll()
+        default:
+            return super.handleCommand(command)
+        }
+        return true
+    }
+
+    public override func commandState(_ command: TEvent.Command) -> Bool? {
+        switch command {
+        case .cut, .clear:
+            return hasSelection
+        case .copy:
+            return hasSelection && !isPassword
+        case .paste:
+            return !TClipboard.text.isEmpty && (maxLength.map { text.count < $0 } ?? true)
+        case .selectAll:
+            return !text.isEmpty
+        default:
+            return super.commandState(command)
+        }
     }
 
     public override var dataSize: Int { 1 }
@@ -328,6 +363,13 @@ public class TInputLine: TView {
     @MainActor
     public func clearSelection() {
         selectionStart = nil
+    }
+
+    public func selectAll() {
+        guard !text.isEmpty else { return }
+        selectionStart = 0
+        cursorPosition = text.count
+        clampCursor()
     }
     
     @MainActor
