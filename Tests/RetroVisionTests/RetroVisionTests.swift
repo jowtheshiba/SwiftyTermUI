@@ -26,6 +26,25 @@ struct RetroVisionTests {
         return (dialog, input, checkbox, ok)
     }
 
+    @Test func panelProvidesFramedContentArea() {
+        let panel = TPanel(
+            frame: Rect(x: 3, y: 2, width: 30, height: 10),
+            title: "Files",
+            footer: "3 files"
+        )
+        let list = TListBox(frame: panel.contentFrame, items: ["one", "two"])
+        panel.addSubview(list)
+
+        #expect(panel.contentFrame == Rect(x: 1, y: 1, width: 28, height: 8))
+        #expect(panel.title == "Files")
+        #expect(panel.footer == "3 files")
+        #expect(panel.options.contains(.framed))
+        #expect(list.superview === panel)
+
+        panel.isActive = false
+        #expect(!panel.isActive)
+    }
+
     // MARK: - Focus traversal
 
     @Test func focusableDescendantsSkipsNonFocusable() {

@@ -6,6 +6,9 @@ enum RetroTextUtils {
         let theme = TTheme.current
         var current: TView? = view
         while let node = current {
+            if node is TPanel {
+                return (theme.panelContent.fg, theme.panelContent.bg)
+            }
             if let window = node as? TWindow {
                 switch window.style {
                 case .window:

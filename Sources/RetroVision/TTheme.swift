@@ -29,6 +29,9 @@ public struct TTheme: Sendable {
     /// Border color while a window is dragged or resized
     public var frameHighlight: Color = .brightGreen
     public var closeButton: Color = .green
+    public var panelFrameActive = TColorPair(fg: .brightWhite, bg: .blue)
+    public var panelFrameInactive = TColorPair(fg: .white, bg: .blue)
+    public var panelContent = TColorPair(fg: .white, bg: .blue)
 
     // MARK: - Menus
     public var menuBar = TColorPair(fg: .black, bg: .white)
