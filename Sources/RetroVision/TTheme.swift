@@ -51,6 +51,7 @@ public struct TTheme: Sendable {
     /// Checkbox/radio marks and list box background
     public var control = TColorPair(fg: .black, bg: .indexed(30))
     public var listSelection = TColorPair(fg: .brightWhite, bg: .green)
+    public var tableHeader = TColorPair(fg: .brightWhite, bg: .blue)
     public var inputLine = TColorPair(fg: .white, bg: .blue)
     /// Selected text in input lines and memos
     public var inputSelection = TColorPair(fg: .black, bg: .white)

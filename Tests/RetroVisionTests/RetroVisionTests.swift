@@ -45,6 +45,42 @@ struct RetroVisionTests {
         #expect(!panel.isActive)
     }
 
+    @Test func tableViewNavigatesAndActivatesRows() {
+        let table = TTableView(
+            frame: Rect(x: 0, y: 0, width: 40, height: 4),
+            columns: [
+                TTableColumn(title: "Name"),
+                TTableColumn(title: "Size", width: .fixed(8), alignment: .right)
+            ],
+            rows: [
+                TTableRow(["one.txt", "10"]),
+                TTableRow(["two.txt", "20"]),
+                TTableRow(["three.txt", "30"]),
+                TTableRow(["four.txt", "40"])
+            ]
+        )
+        var selected: Int?
+        var activated: TTableRow?
+        table.onSelectionChange = { index, _ in selected = index }
+        table.onActivate = { _, row in activated = row }
+        table.isFocused = true
+
+        table.handleEvent(.key(.down))
+        #expect(table.selectedIndex == 1)
+        #expect(selected == 1)
+
+        table.handleEvent(.key(.down))
+        table.handleEvent(.key(.down))
+        table.handleEvent(.key(.down))
+        #expect(table.selectedIndex == 3)
+
+        table.handleEvent(.key(.up))
+        #expect(table.selectedIndex == 2)
+
+        table.handleEvent(.key(.enter))
+        #expect(activated == TTableRow(["three.txt", "30"]))
+    }
+
     // MARK: - Focus traversal
 
     @Test func focusableDescendantsSkipsNonFocusable() {
