@@ -50,6 +50,10 @@ let package = Package(
             targets: ["FileDialogExample"]
         ),
         .executable(
+            name: "TreeViewExample",
+            targets: ["TreeViewExample"]
+        ),
+        .executable(
             name: "GraphDemo",
             targets: ["GraphDemo"]
         ),
@@ -103,6 +107,12 @@ let package = Package(
             dependencies: ["RetroVision", "SwiftyTermUI"],
             path: "Examples",
             sources: ["FileDialogExample.swift"]
+        ),
+        .executableTarget(
+            name: "TreeViewExample",
+            dependencies: ["RetroVision", "SwiftyTermUI"],
+            path: "Examples",
+            sources: ["TreeViewExample.swift"]
         ),
         .testTarget(
             name: "RetroVisionTests",

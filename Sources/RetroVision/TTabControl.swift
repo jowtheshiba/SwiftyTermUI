@@ -1,11 +1,14 @@
 import SwiftyTermUI
 
 public class TTabControl: TGroup {
-    
     public private(set) var tabs: [TTab] = []
-    
+    public let headerHeight: Int = 3
+    public var onTabChanged: ((Int) -> Void)?
+
     private var _activeTabIndex: Int = 0
-    
+    private let tabIndent: Int = 1
+    private let tabGap: Int = 0
+
     public var activeTabIndex: Int {
         get { _activeTabIndex }
         set {
@@ -17,38 +20,7 @@ public class TTabControl: TGroup {
             onTabChanged?(clamped)
         }
     }
-    
-    /// Called when the active tab changes.
-    public var onTabChanged: ((Int) -> Void)?
-    
-    /// Height of the tab header area (top border + tabs + middle separator).
-    public let headerHeight: Int = 3
-    
-    /// Indent before the first tab label.
-    private let tabIndent: Int = 1
-    
-    /// Gap between consecutive tab slots.
-    private let tabGap: Int = 2
-    
-    public override init(frame: Rect) {
-        super.init(frame: frame)
-    }
-    
-    /// Adds a tab page to the control.
-    /// The tab's frame is automatically set to the content area.
-    public func addTab(_ tab: TTab) {
-        tabs.append(tab)
-        tab.frame = contentRect
-        addSubview(tab)
-        
-        if tabs.count == 1 {
-            _activeTabIndex = 0
-        }
-        updateTabVisibility()
-    }
-    
-    /// The content area inside the frame borders, in local coordinates.
-    /// Accounts for the 3-row header, left/right ║ borders and bottom ╚═╝.
+
     public var contentRect: Rect {
         Rect(
             x: 1,
@@ -57,241 +29,319 @@ public class TTabControl: TGroup {
             height: max(0, frame.height - headerHeight - 1)
         )
     }
-    
-    // MARK: - Tab positions
-    
-    private struct TabPos {
-        let x: Int      // label start in local coords
-        let width: Int   // label width including padding spaces
+
+    public override init(frame: Rect) {
+        super.init(frame: frame)
     }
-    
-    private func computeTabPositions() -> [TabPos] {
-        var positions: [TabPos] = []
-        guard !tabs.isEmpty else { return positions }
-        
-        let availableWidth = max(0, frame.width - 2)
-        let totalTitleWidth = tabs.reduce(0) { $0 + " \($1.title) ".count }
-        let gapCount = max(1, tabs.count - 1)
-        
-        // If they exceed available width or there's only 1 tab, use a fixed gap
-        if totalTitleWidth >= availableWidth || tabs.count == 1 {
-            var x = tabIndent
-            for tab in tabs {
-                let label = " \(tab.title) "
-                let w = label.count
-                positions.append(TabPos(x: x, width: w))
-                x += w + tabGap
-            }
-            return positions
+
+    public func addTab(_ tab: TTab) {
+        tabs.append(tab)
+        tab.frame = contentRect
+        addSubview(tab)
+        if tabs.count == 1 {
+            _activeTabIndex = 0
         }
-        
-        // Distribute extra space evenly between tabs
-        let extraSpace = availableWidth - totalTitleWidth
-        let baseGap = extraSpace / gapCount
-        let remainder = extraSpace % gapCount
-        
-        var x = 1 // Start at the left edge (cornerL = 0)
-        for (index, tab) in tabs.enumerated() {
-            let label = " \(tab.title) "
-            let w = label.count
-            positions.append(TabPos(x: x, width: w))
-            // The last tab doesn't have a gap after it
-            let currentGap = index < gapCount ? baseGap + (index < remainder ? 1 : 0) : 0
-            x += w + currentGap
-        }
-        
-        return positions
+        updateTabVisibility()
     }
-    
-    // MARK: - Drawing
-    
+
     @MainActor
     public override func draw() {
-        guard isVisible else { return }
-        guard frame.width > 3, frame.height > 3 else { return }
-        
+        guard isVisible, frame.width > 3, frame.height > 3 else { return }
+
         let tui = SwiftyTermUI.shared
         let origin = localToGlobal(Point(x: 0, y: 0))
+        let contentColors = RetroTextUtils.resolvedContentColors(for: self)
+        let borderColor: Color = contentColors.fg == .black ? .brightWhite : .white
+        let positions = computeTabPositions()
+
         tui.pushClip(row: origin.y, column: origin.x, width: frame.width, height: frame.height)
         defer { tui.popClip() }
-        let (contentFg, contentBg) = RetroTextUtils.resolvedContentColors(for: self)
-        let borderFg: Color = (contentFg == .black) ? .brightWhite : .white
-        
-        let activeFg: Color = TTheme.current.tabActive.fg
-        let activeBg: Color = TTheme.current.tabActive.bg
-        
+
         layoutTabs()
-        
-        let positions = computeTabPositions()
-        let lastRow = frame.height - 1
-        let lastCol = frame.width - 1
-        
-        // 1. Fill entire background
         tui.fillRect(
-            row: origin.y, column: origin.x,
-            width: frame.width, height: frame.height,
-            character: " ", attributes: [],
-            foregroundColor: contentFg, backgroundColor: contentBg
+            row: origin.y,
+            column: origin.x,
+            width: frame.width,
+            height: frame.height,
+            character: " ",
+            attributes: [],
+            foregroundColor: contentColors.fg,
+            backgroundColor: contentColors.bg
         )
-        
-        // ── Row 0: Frame top border ╔════════╗ ────────────────
-        tui.drawLine(
-            fromRow: origin.y, fromColumn: origin.x,
-            toRow: origin.y, toColumn: origin.x + lastCol,
-            character: "═", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        tui.drawChar(
-            row: origin.y, column: origin.x,
-            character: "╔", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        tui.drawChar(
-            row: origin.y, column: origin.x + lastCol,
-            character: "╗", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        
-        // ── Row 1: Tab Labels with side borders ║ ────────────
-        tui.drawChar(
-            row: origin.y + 1, column: origin.x,
-            character: "║", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        
-        for (index, tab) in tabs.enumerated() {
-            guard index < positions.count else { continue }
-            let pos = positions[index]
-            let label = " \(tab.title) "
-            
-            let isSelected = (index == _activeTabIndex)
-            let fg = isSelected ? activeFg : contentFg
-            let bg = isSelected ? activeBg : contentBg
-            
-            let availableWidth = max(0, lastCol - pos.x)
-            guard availableWidth > 0 else { continue }
-            
-            let clipped = String(label.prefix(availableWidth))
-            tui.drawString(
-                row: origin.y + 1, column: origin.x + pos.x,
-                text: clipped, attributes: [],
-                foregroundColor: fg, backgroundColor: bg
+
+        drawContentFrame(at: origin, foreground: borderColor, background: contentColors.bg)
+
+        for index in tabs.indices where index != _activeTabIndex && index < positions.count {
+            drawInactiveTab(
+                tabs[index],
+                position: positions[index],
+                at: origin,
+                foreground: borderColor,
+                background: contentColors.bg
             )
         }
-        
-        tui.drawChar(
-            row: origin.y + 1, column: origin.x + lastCol,
-            character: "║", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        
-        // ── Row 2: Middle separator ╠════════╣ ────────────────
-        tui.drawLine(
-            fromRow: origin.y + 2, fromColumn: origin.x,
-            toRow: origin.y + 2, toColumn: origin.x + lastCol,
-            character: "═", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        tui.drawChar(
-            row: origin.y + 2, column: origin.x,
-            character: "╠", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        tui.drawChar(
-            row: origin.y + 2, column: origin.x + lastCol,
-            character: "╣", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        
-        // ── Rows 3…lastRow-1: Left & right borders ║ ───────────
-        
-        for row in headerHeight..<lastRow {
-            tui.drawChar(
-                row: origin.y + row, column: origin.x,
-                character: "║", attributes: [],
-                foregroundColor: borderFg, backgroundColor: contentBg
-            )
-            tui.drawChar(
-                row: origin.y + row, column: origin.x + lastCol,
-                character: "║", attributes: [],
-                foregroundColor: borderFg, backgroundColor: contentBg
+
+        if tabs.indices.contains(_activeTabIndex), positions.indices.contains(_activeTabIndex) {
+            drawActiveTab(
+                tabs[_activeTabIndex],
+                position: positions[_activeTabIndex],
+                at: origin,
+                foreground: borderColor,
+                background: contentColors.bg
             )
         }
-        
-        // ── Last row: Bottom border ╚═══╝ ──────────────────────
-        
-        tui.drawChar(
-            row: origin.y + lastRow, column: origin.x,
-            character: "╚", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        if lastCol > 1 {
-            tui.drawLine(
-                fromRow: origin.y + lastRow, fromColumn: origin.x + 1,
-                toRow: origin.y + lastRow, toColumn: origin.x + lastCol - 1,
-                character: "═", attributes: [],
-                foregroundColor: borderFg, backgroundColor: contentBg
-            )
-        }
-        tui.drawChar(
-            row: origin.y + lastRow, column: origin.x + lastCol,
-            character: "╝", attributes: [],
-            foregroundColor: borderFg, backgroundColor: contentBg
-        )
-        
-        // ── Subviews (only active tab is visible) ──────────────
-        
+
         for view in subviews {
             view.draw()
         }
     }
-    
-    // MARK: - Event Handling
-    
+
     @MainActor
     public override func handleEvent(_ event: TEvent) {
         switch event {
         case .mouse(let mouseEvent):
-            handleMouseEvent(mouseEvent)
+            _ = handleMouseEvent(mouseEvent)
         default:
-            // Route keyboard/command events ONLY to the active tab
-            guard _activeTabIndex >= 0, _activeTabIndex < tabs.count else { return }
+            guard tabs.indices.contains(_activeTabIndex) else { return }
             tabs[_activeTabIndex].handleEvent(event)
         }
     }
-    
+
     @MainActor
     public override func mouseEvent(_ event: TEvent.MouseEvent) -> Bool {
-        // Clicks on the tab header row (1) switch tabs
-        if event.action == .down, event.button == .left,
-           event.position.y == 1 {
-            return selectTabAtX(event.position.x)
-        }
-        return false
+        guard event.action == .down,
+              event.button == .left,
+              event.position.y >= 0,
+              event.position.y < 2 else { return false }
+        return selectTab(at: event.position)
     }
-    
-    // MARK: - Private
-    
+
+    private struct TabPosition {
+        let x: Int
+        let width: Int
+    }
+
+    private func computeTabPositions() -> [TabPosition] {
+        var positions: [TabPosition] = []
+        var x = tabIndent
+        for tab in tabs {
+            let width = max(4, tab.title.count + 4)
+            positions.append(TabPosition(x: x, width: width))
+            x += width + tabGap
+        }
+        return positions
+    }
+
+    @MainActor
+    private func drawContentFrame(at origin: Point, foreground: Color, background: Color) {
+        let tui = SwiftyTermUI.shared
+        let top = origin.y + headerHeight - 1
+        let bottom = origin.y + frame.height - 1
+        let left = origin.x
+        let right = origin.x + frame.width - 1
+
+        tui.drawLine(
+            fromRow: top,
+            fromColumn: left + 1,
+            toRow: top,
+            toColumn: right - 1,
+            character: "─",
+            attributes: [],
+            foregroundColor: foreground,
+            backgroundColor: background
+        )
+        tui.drawChar(row: top, column: left, character: "┌", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: top, column: right, character: "┐", attributes: [], foregroundColor: foreground, backgroundColor: background)
+
+        if bottom > top + 1 {
+            tui.drawLine(
+                fromRow: top + 1,
+                fromColumn: left,
+                toRow: bottom - 1,
+                toColumn: left,
+                character: "│",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: background
+            )
+            tui.drawLine(
+                fromRow: top + 1,
+                fromColumn: right,
+                toRow: bottom - 1,
+                toColumn: right,
+                character: "│",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: background
+            )
+        }
+
+        tui.drawLine(
+            fromRow: bottom,
+            fromColumn: left + 1,
+            toRow: bottom,
+            toColumn: right - 1,
+            character: "─",
+            attributes: [],
+            foregroundColor: foreground,
+            backgroundColor: background
+        )
+        tui.drawChar(row: bottom, column: left, character: "└", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: bottom, column: right, character: "┘", attributes: [], foregroundColor: foreground, backgroundColor: background)
+    }
+
+    @MainActor
+    private func drawActiveTab(
+        _ tab: TTab,
+        position: TabPosition,
+        at origin: Point,
+        foreground: Color,
+        background: Color
+    ) {
+        let tui = SwiftyTermUI.shared
+        let left = origin.x + position.x
+        let right = min(origin.x + frame.width - 2, left + position.width - 1)
+        guard right > left else { return }
+
+        if right > left + 1 {
+            tui.drawLine(
+                fromRow: origin.y,
+                fromColumn: left + 1,
+                toRow: origin.y,
+                toColumn: right - 1,
+                character: "─",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: background
+            )
+        }
+        tui.drawChar(row: origin.y, column: left, character: "┌", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: origin.y, column: right, character: "┐", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: origin.y + 1, column: left, character: "│", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: origin.y + 1, column: right, character: "│", attributes: [], foregroundColor: foreground, backgroundColor: background)
+
+        let innerWidth = max(0, right - left - 1)
+        if innerWidth > 0 {
+            tui.fillRect(
+                row: origin.y + 1,
+                column: left + 1,
+                width: innerWidth,
+                height: 1,
+                character: " ",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: background
+            )
+            let label = centered(tab.title, width: innerWidth)
+            let active = TTheme.current.tabActive
+            tui.drawString(
+                row: origin.y + 1,
+                column: left + 1,
+                text: label,
+                attributes: [],
+                foregroundColor: active.fg,
+                backgroundColor: active.bg
+            )
+        }
+
+        let separatorRow = origin.y + headerHeight - 1
+        tui.drawChar(row: separatorRow, column: left, character: "┘", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        if right > left + 1 {
+            tui.fillRect(
+                row: separatorRow,
+                column: left + 1,
+                width: right - left - 1,
+                height: 1,
+                character: " ",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: background
+            )
+        }
+        tui.drawChar(row: separatorRow, column: right, character: "└", attributes: [], foregroundColor: foreground, backgroundColor: background)
+    }
+
+    @MainActor
+    private func drawInactiveTab(
+        _ tab: TTab,
+        position: TabPosition,
+        at origin: Point,
+        foreground: Color,
+        background: Color
+    ) {
+        let tui = SwiftyTermUI.shared
+        let inactive = TTheme.current.tabInactive
+        let top = origin.y
+        let labelRow = origin.y + 1
+        let left = origin.x + position.x
+        let right = min(origin.x + frame.width - 2, left + position.width - 1)
+        guard right > left else { return }
+
+        if right > left + 1 {
+            tui.drawLine(
+                fromRow: top,
+                fromColumn: left + 1,
+                toRow: top,
+                toColumn: right - 1,
+                character: "─",
+                attributes: [],
+                foregroundColor: foreground,
+                backgroundColor: inactive.bg
+            )
+            tui.fillRect(
+                row: labelRow,
+                column: left + 1,
+                width: right - left - 1,
+                height: 1,
+                character: " ",
+                attributes: [],
+                foregroundColor: inactive.fg,
+                backgroundColor: inactive.bg
+            )
+            let label = centered(tab.title, width: right - left - 1)
+            tui.drawString(
+                row: labelRow,
+                column: left + 1,
+                text: label,
+                attributes: [],
+                foregroundColor: inactive.fg,
+                backgroundColor: inactive.bg
+            )
+        }
+
+        tui.drawChar(row: top, column: left, character: "┌", attributes: [], foregroundColor: foreground, backgroundColor: inactive.bg)
+        tui.drawChar(row: top, column: right, character: "┐", attributes: [], foregroundColor: foreground, backgroundColor: inactive.bg)
+        tui.drawChar(row: labelRow, column: left, character: "│", attributes: [], foregroundColor: foreground, backgroundColor: inactive.bg)
+        tui.drawChar(row: labelRow, column: right, character: "│", attributes: [], foregroundColor: foreground, backgroundColor: inactive.bg)
+        let separatorRow = origin.y + headerHeight - 1
+        tui.drawChar(row: separatorRow, column: left, character: "┴", attributes: [], foregroundColor: foreground, backgroundColor: background)
+        tui.drawChar(row: separatorRow, column: right, character: "┴", attributes: [], foregroundColor: foreground, backgroundColor: background)
+    }
+
+    private func centered(_ text: String, width: Int) -> String {
+        let clipped = RetroTextUtils.clampText(text, maxWidth: width)
+        let padding = max(0, width - clipped.count)
+        let left = padding / 2
+        return String(repeating: " ", count: left) + clipped + String(repeating: " ", count: padding - left)
+    }
+
     private func updateTabVisibility() {
         for (index, tab) in tabs.enumerated() {
-            tab.isVisible = (index == _activeTabIndex)
+            tab.isVisible = index == _activeTabIndex
         }
     }
-    
+
     private func layoutTabs() {
         let rect = contentRect
         for tab in tabs {
             tab.frame = rect
         }
     }
-    
-    private func selectTabAtX(_ localX: Int) -> Bool {
+
+    private func selectTab(at point: Point) -> Bool {
         let positions = computeTabPositions()
-        for (index, pos) in positions.enumerated() {
-            // Hit area is just the label width
-            let hitStart = pos.x
-            let hitEnd = pos.x + pos.width - 1
-            if localX >= hitStart && localX <= hitEnd {
+        for (index, position) in positions.enumerated() {
+            if point.y < 2, point.x >= position.x, point.x < position.x + position.width {
                 activeTabIndex = index
                 return true
             }

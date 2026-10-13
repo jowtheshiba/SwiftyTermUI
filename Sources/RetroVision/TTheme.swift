@@ -56,7 +56,8 @@ public struct TTheme: Sendable {
     /// Selected text in input lines and memos
     public var inputSelection = TColorPair(fg: .black, bg: .white)
     public var inputCursor: Color = .brightWhite
-    public var tabActive = TColorPair(fg: .brightWhite, bg: .blue)
+    public var tabActive = TColorPair(fg: .black, bg: .white)
+    public var tabInactive = TColorPair(fg: .brightBlack, bg: .white)
 
     public init() {}
 

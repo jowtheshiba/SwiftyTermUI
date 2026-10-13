@@ -81,6 +81,78 @@ struct RetroVisionTests {
         #expect(activated == TTableRow(["three.txt", "30"]))
     }
 
+    @Test func treeViewNavigatesExpandsAndActivatesNodes() {
+        let child = TTreeNode(title: "Child")
+        let root = TTreeNode(title: "Root", children: [child])
+        let sibling = TTreeNode(title: "Sibling")
+        let tree = TTreeView(
+            frame: Rect(x: 0, y: 0, width: 30, height: 5),
+            roots: [root, sibling]
+        )
+        var activated: TTreeNode?
+        tree.onActivate = { activated = $0 }
+        tree.isFocused = true
+
+        #expect(tree.visibleNodes.count == 2)
+        tree.handleEvent(.key(.right))
+        #expect(root.isExpanded)
+        #expect(tree.visibleNodes.count == 3)
+
+        tree.handleEvent(.key(.right))
+        #expect(tree.selectedNode === child)
+        tree.handleEvent(.key(.enter))
+        #expect(activated === child)
+
+        tree.handleEvent(.key(.left))
+        #expect(tree.selectedNode === root)
+        tree.handleEvent(.key(.left))
+        #expect(!root.isExpanded)
+        #expect(tree.visibleNodes.count == 2)
+    }
+
+    @Test func treeViewLoadsChildrenLazilyOnce() {
+        var loadCount = 0
+        let root = TTreeNode(title: "Lazy", childrenProvider: {
+            loadCount += 1
+            return [TTreeNode(title: "Loaded")]
+        })
+        let tree = TTreeView(frame: Rect(x: 0, y: 0, width: 30, height: 5), roots: [root])
+        tree.isFocused = true
+
+        tree.handleEvent(.key(.right))
+        tree.handleEvent(.key(.left))
+        tree.handleEvent(.key(.right))
+
+        #expect(loadCount == 1)
+        #expect(root.isLoaded)
+        #expect(tree.visibleNodes.count == 2)
+    }
+
+    @Test func tabControlSelectsRaisedAndRecessedTabs() {
+        let tabs = TTabControl(frame: Rect(x: 0, y: 0, width: 40, height: 10))
+        let first = TTab(title: "One")
+        let second = TTab(title: "Two")
+        tabs.addTab(first)
+        tabs.addTab(second)
+        var changedIndex: Int?
+        tabs.onTabChanged = { changedIndex = $0 }
+
+        #expect(first.isVisible)
+        #expect(!second.isVisible)
+        #expect(tabs.contentRect == Rect(x: 1, y: 3, width: 38, height: 6))
+
+        let click = TEvent.MouseEvent(
+            position: Point(x: 10, y: 1),
+            button: .left,
+            action: .down
+        )
+        #expect(tabs.handleMouseEvent(click))
+        #expect(tabs.activeTabIndex == 1)
+        #expect(changedIndex == 1)
+        #expect(!first.isVisible)
+        #expect(second.isVisible)
+    }
+
     // MARK: - Focus traversal
 
     @Test func focusableDescendantsSkipsNonFocusable() {
