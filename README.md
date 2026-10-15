@@ -1,6 +1,6 @@
 # SwiftyTermUI
 
-> **Note:** This project is currently under development. It supports macOS, Linux (Ubuntu arm64/amd64), and native Windows terminals with Swift 6.2. Interactive terminal behavior is primarily tested on macOS.
+> **Note:** This project supports macOS, Linux (Ubuntu arm64/amd64), and native Windows terminals with Swift 6.2. Interactive terminal behavior is primarily tested on macOS.
 
 <img width="811" height="698" alt="scr" src="https://github.com/user-attachments/assets/f2334d0d-e7ad-435f-8a5b-cf88311cd9d2" />
 
